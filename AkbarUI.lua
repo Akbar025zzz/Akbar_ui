@@ -1983,10 +1983,10 @@ function Akbar:CreateWindow(config)
         local firstVisible = nil
         for _, tab in ipairs(Window.Tabs) do
             local match = (query == "") or (string.find(string.lower(tab.Name), query, 1, true) ~= nil)
-            if tab.Button then tab.Button.Visible = match end
+            if tab.NavButton then tab.NavButton.Visible = match end
             if match and not firstVisible then firstVisible = tab end
         end
-        if firstVisible and Window.ActiveTab and (not Window.ActiveTab.Button or not Window.ActiveTab.Button.Visible) then
+        if firstVisible and Window.ActiveTab and (not Window.ActiveTab.NavButton or not Window.ActiveTab.NavButton.Visible) then
             Window:SelectTab(firstVisible)
         end
     end)
@@ -2418,7 +2418,7 @@ function Akbar:CreateWindow(config)
         if Window.ActiveTab then
             local old = Window.ActiveTab
             old.Page.Visible = false
-            old.Button.BackgroundTransparency = 1
+            old.NavButton.BackgroundTransparency = 1
             old.IconImage.ImageColor3 = Akbar.Theme.Muted
             old.TextLabel.TextColor3 = Akbar.Theme.Muted
         end
@@ -2426,7 +2426,7 @@ function Akbar:CreateWindow(config)
         Window.ActiveTab = tab
         tab.Page.Visible = true
         tab.Page.CanvasPosition = Vector2.new(0, 0)
-        tab.Button.BackgroundTransparency = 0.25
+        tab.NavButton.BackgroundTransparency = 0.25
         tab.IconImage.ImageColor3 = Akbar.Theme.Accent
         tab.TextLabel.TextColor3 = Akbar.Theme.Text
 
@@ -2456,7 +2456,7 @@ function Akbar:CreateWindow(config)
         TabBtn.LayoutOrder = #Window.Tabs + 1
         TabBtn.Parent = TabScroll
         Round(TabBtn, 8)
-        Tab.Button = TabBtn
+        Tab.NavButton = TabBtn -- FIX: dipisah dari nama "Button" biar tidak tabrakan dengan method :Button() (pembuat komponen tombol)
 
         local TabIconImg = Instance.new("ImageLabel")
         TabIconImg.Position = UDim2.new(0, 10, 0.5, -9)
@@ -2529,11 +2529,11 @@ function Akbar:CreateWindow(config)
     AddHook(function()
         for _, t in ipairs(Window.Tabs) do
             if Window.ActiveTab == t then
-                t.Button.BackgroundTransparency = 0.25
+                t.NavButton.BackgroundTransparency = 0.25
                 t.IconImage.ImageColor3 = Akbar.Theme.Accent
                 t.TextLabel.TextColor3 = Akbar.Theme.Text
             else
-                t.Button.BackgroundTransparency = 1
+                t.NavButton.BackgroundTransparency = 1
                 t.IconImage.ImageColor3 = Akbar.Theme.Muted
                 t.TextLabel.TextColor3 = Akbar.Theme.Muted
             end
