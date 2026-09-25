@@ -2,11 +2,15 @@
     AKBAR UI — Modern Dark Glassmorphism UI Framework (Enhanced Edition)
     Brand: AKBAR UI / King Akbar
     Architecture: Modular, Event-Cleaned, Mobile & PC Responsive
+    Version 1.2.0 — Bug fixes & Feature improvements
+    Fixed: Slider stepping, division-by-zero, EnumItem load, Dropdown nil,
+           MinBtn width, MaxBtn state, memory leaks, Button animation,
+           Group Collapsibles, ToggleWindow flash, ColorPicker HSV picker
 ]]
 
 local Akbar = {}
 Akbar.__index = Akbar
-Akbar.Version = "1.1.1"
+Akbar.Version = "1.2.0"
 Akbar.AnimationEnabled = true
 
 -- Services
@@ -173,7 +177,16 @@ function ConfigManager:Load(fileName)
     for flag, val in pairs(decoded) do
         if self.Flags[flag] then
             if type(val) == "table" and val.__type == "Color3" then
+                -- FIX: Reconstruct Color3 from saved r/g/b (0-1 range)
                 self.Flags[flag].Set(Color3.new(val.r, val.g, val.b))
+            elseif type(val) == "table" and val.__type == "EnumItem" then
+                -- FIX: Reconstruct EnumItem that was previously ignored
+                local ok, enumVal = pcall(function()
+                    return Enum[val.enum][val.name]
+                end)
+                if ok and enumVal then
+                    self.Flags[flag].Set(enumVal)
+                end
             else
                 self.Flags[flag].Set(val)
             end
@@ -656,7 +669,8 @@ function Akbar:CreateWindow(config)
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
+    -- FIX: Track drag connection so it's cleaned up on Window:Destroy()
+    table.insert(Window.Connections, UserInputService.InputChanged:Connect(function(input)
         if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - dragStart
             MainShadow.Position = UDim2.new(
@@ -667,7 +681,7 @@ function Akbar:CreateWindow(config)
             )
             if KeepOnScreen then ClampToViewport() end
         end
-    end)
+    end))
 
     -- Resize System
     local isResizing = false
@@ -676,6 +690,8 @@ function Akbar:CreateWindow(config)
 
     ResizeGrip.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            -- FIX: Don't resize if minimized or maximized
+            if Window.IsMinimized or Window.IsMaximized then return end
             isResizing = true
             resizeStart = input.Position
             startSize = MainShadow.AbsoluteSize
@@ -690,7 +706,8 @@ function Akbar:CreateWindow(config)
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
+    -- FIX: Track resize connection so it's cleaned up on Window:Destroy()
+    table.insert(Window.Connections, UserInputService.InputChanged:Connect(function(input)
         if isResizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - resizeStart
             local newX = math.clamp(startSize.X + delta.X, Window.MinSize.X, Window.MaxSize.X)
@@ -699,27 +716,35 @@ function Akbar:CreateWindow(config)
             Window.Size = MainShadow.Size
             ClampToViewport()
         end
-    end)
+    end))
 
     -- Window Controls Behavior (Fixed to Activated)
     MinBtn.Activated:Connect(function()
         Window.IsMinimized = not Window.IsMinimized
         if Window.IsMinimized then
             Tween(BodyContainer, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Size = UDim2.new(1, 0, 0, 0) })
-            Tween(MainShadow, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(Window.Size.X.Offset, 52) })
+            -- FIX: Use AbsoluteSize.X so minimize width is correct even when maximized
+            Tween(MainShadow, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(MainShadow.AbsoluteSize.X, 52) })
         else
-            Tween(MainShadow, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Size = Window.Size })
+            -- FIX: Restore to current Window.Size (which may be pre-maximize size)
+            local restoreSize = Window.IsMaximized and MainShadow.Size or Window.Size
+            Tween(MainShadow, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Size = restoreSize })
             Tween(BodyContainer, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Size = UDim2.new(1, 0, 1, -52) })
         end
     end)
 
     MaxBtn.Activated:Connect(function()
         Window.IsMaximized = not Window.IsMaximized
+        -- FIX: Reset minimize state so body shows when coming out of minimize+maximize
+        if Window.IsMinimized then
+            Window.IsMinimized = false
+            Tween(BodyContainer, TweenInfo.new(0.15), { Size = UDim2.new(1, 0, 1, -52) })
+        end
         local camera = workspace.CurrentCamera
         local vSize = camera and camera.ViewportSize or Vector2.new(1920, 1080)
 
         if Window.IsMaximized then
-            Window.PreMaximizeSize = MainShadow.Size
+            Window.PreMaximizeSize = Window.Size
             Window.PreMaximizePos = MainShadow.Position
             Tween(MainShadow, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
                 Size = UDim2.fromOffset(vSize.X - 40, vSize.Y - 60),
@@ -734,6 +759,9 @@ function Akbar:CreateWindow(config)
     end)
 
     CloseBtn.Activated:Connect(function()
+        -- FIX: Reset all window states on close
+        Window.IsMinimized = false
+        Window.IsMaximized = false
         MainShadow.Visible = false
     end)
 
@@ -799,7 +827,8 @@ function Akbar:CreateWindow(config)
             end
         end)
 
-        UserInputService.InputChanged:Connect(function(input)
+        -- FIX: Track this connection so it's properly cleaned up on Destroy
+        local floatMoveConn = UserInputService.InputChanged:Connect(function(input)
             if fDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - fStart
                 if math.abs(delta.X) > 6 or math.abs(delta.Y) > 6 then
@@ -813,6 +842,7 @@ function Akbar:CreateWindow(config)
                 )
             end
         end)
+        table.insert(Window.Connections, floatMoveConn)
 
         local function ToggleWindow()
             local willOpen = not MainShadow.Visible
@@ -823,16 +853,23 @@ function Akbar:CreateWindow(config)
 
             if willOpen then
                 MainShadow.Visible = true
-                MainShadow.Size = UDim2.fromOffset(Window.Size.X.Offset * 0.92, Window.Size.Y.Offset * 0.92)
-                Tween(MainShadow, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                    Size = Window.Size
-                })
+                -- FIX: Only do scale animation if animations are enabled; avoids 92% flash when disabled
+                if Akbar.AnimationEnabled then
+                    MainShadow.Size = UDim2.fromOffset(Window.Size.X.Offset * 0.92, Window.Size.Y.Offset * 0.92)
+                    Tween(MainShadow, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                        Size = Window.Size
+                    })
+                else
+                    MainShadow.Size = Window.Size
+                end
             else
                 local closeTween = Tween(MainShadow, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
                     Size = UDim2.fromOffset(Window.Size.X.Offset * 0.88, Window.Size.Y.Offset * 0.88)
                 })
                 if closeTween then closeTween.Completed:Wait() end
                 MainShadow.Visible = false
+                -- FIX: Reset size after close so next open animation is correct
+                MainShadow.Size = Window.Size
             end
         end
 
@@ -968,6 +1005,39 @@ function Akbar:CreateWindow(config)
 
     function Window:ListConfigs()
         return Window.Config:List()
+    end
+
+    -- NEW: Programmatic title/subtitle update
+    function Window:SetTitle(title)
+        if title then TitleLabel.Text = title end
+    end
+    function Window:SetSubtitle(sub)
+        if sub then SubtitleLabel.Text = sub end
+    end
+
+    -- NEW: Programmatic show/hide/toggle
+    function Window:Show()
+        MainShadow.Visible = true
+        Window.IsMinimized = false
+        Tween(BodyContainer, TweenInfo.new(0.15), { Size = UDim2.new(1, 0, 1, -52) })
+    end
+    function Window:Hide()
+        Window.IsMinimized = false
+        Window.IsMaximized = false
+        MainShadow.Visible = false
+    end
+    function Window:Toggle()
+        if MainShadow.Visible then
+            Window:Hide()
+        else
+            Window:Show()
+        end
+    end
+
+    -- NEW: Update active tab heading from code
+    function Window:SetTabHeading(title, desc)
+        if title then TabHeading.Text = title end
+        if desc then TabDesc.Text = desc end
     end
 
     function Window:Notify(notifData)
@@ -1362,9 +1432,20 @@ function Akbar:CreateWindow(config)
             Tween(TabText, TweenInfo.new(0.25), { TextColor3 = Akbar.Theme.Text })
         end
 
+        local tabEnabled = true
         TabBtn.Activated:Connect(function()
+            if not tabEnabled then return end
             Tab:Select()
         end)
+
+        -- NEW: Disable/enable tab
+        function Tab:SetEnabled(state)
+            tabEnabled = state and true or false
+            TabBtn.Active = tabEnabled
+            TabIconImg.ImageTransparency = tabEnabled and 0 or 0.6
+            TabText.TextColor3 = tabEnabled and Akbar.Theme.Muted or Color3.fromRGB(80, 85, 100)
+        end
+        function Tab:IsEnabled() return tabEnabled end
 
         table.insert(Window.Tabs, Tab)
 
@@ -1402,7 +1483,8 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
             Window = Window,
             Tab = targetScope.Tab or targetScope,
             Connections = {},
-            Components = {}
+            Components = {},
+            Collapsibles = {} -- FIX: needed for nested accordion mode
         }
 
         local GroupFrame = Instance.new("Frame")
@@ -1653,11 +1735,21 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         end
 
         ClickBtn.Activated:Connect(function()
+            if not toggleEnabled then return end  -- FIX: respect disabled state
             SetVal(not Toggle.Value)
         end)
 
+        local toggleEnabled = true
         function Toggle:Set(val) SetVal(val) end
         function Toggle:Get() return Toggle.Value end
+        -- NEW: Disable/enable toggle interaction
+        function Toggle:SetEnabled(state)
+            toggleEnabled = state and true or false
+            ClickBtn.Active = toggleEnabled
+            Frame.BackgroundTransparency = toggleEnabled and 0.5 or 0.8
+            Title.TextColor3 = toggleEnabled and Akbar.Theme.Text or Akbar.Theme.Muted
+        end
+        function Toggle:IsEnabled() return toggleEnabled end
         function Toggle:Destroy() Frame:Destroy() end
 
         if flag and Window.Config then
@@ -1730,14 +1822,33 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
             Tween(Btn, TweenInfo.new(0.2), { BackgroundTransparency = style == "Primary" and 0.1 or 0.4 })
         end)
 
+        local btnHeight = desc ~= "" and 48 or 40
+        local btnEnabled = true
+
         Btn.Activated:Connect(function()
-            Tween(Btn, TweenInfo.new(0.08), { Size = UDim2.new(0.98, 0, 0, (desc ~= "" and 48 or 40) - 2) })
+            if not btnEnabled then return end
+            -- FIX: Use absolute offset shrink instead of scale (scale causes layout shift)
+            Tween(Btn, TweenInfo.new(0.08), { Size = UDim2.new(1, -8, 0, btnHeight - 4) })
             task.delay(0.08, function()
-                Tween(Btn, TweenInfo.new(0.08), { Size = UDim2.new(1, 0, 0, desc ~= "" and 48 or 40) })
+                Tween(Btn, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.new(1, 0, 0, btnHeight) })
             end)
             pcall(cb)
         end)
 
+        -- NEW: Button control methods
+        function Button:SetText(text)
+            Title.Text = tostring(text)
+        end
+        function Button:GetText()
+            return Title.Text
+        end
+        function Button:SetEnabled(state)
+            btnEnabled = state and true or false
+            Btn.BackgroundTransparency = btnEnabled and (style == "Primary" and 0.1 or 0.4) or 0.75
+            Title.TextColor3 = btnEnabled and Akbar.Theme.Text or Akbar.Theme.Muted
+            IconImg.ImageTransparency = btnEnabled and 0 or 0.5
+        end
+        function Button:IsEnabled() return btnEnabled end
         function Button:Destroy() Btn:Destroy() end
         return Button
     end
@@ -1750,15 +1861,20 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         local range = sliderConfig.Range or {0, 100}
         local inc = sliderConfig.Increment or 1
         local suffix = sliderConfig.Suffix or ""
-        local current = sliderConfig.CurrentValue or range[1]
+        -- FIX: Ensure range is valid, clamp initial value
+        local rangeSpan = math.max(range[2] - range[1], 1e-6) -- FIX: avoid division by zero
+        local current = math.clamp(sliderConfig.CurrentValue or range[1], range[1], range[2])
         local flag = sliderConfig.Flag
         local cb = sliderConfig.Callback or function() end
 
         local Slider = { Value = current }
 
+        local sliderHeight = desc ~= "" and 68 or 56
+        local sliderBarY = desc ~= "" and 44 or 34
+
         local Frame = Instance.new("Frame")
         Frame.Name = "Slider_" .. name
-        Frame.Size = UDim2.new(1, 0, 0, 56)
+        Frame.Size = UDim2.new(1, 0, 0, sliderHeight)
         Frame.BackgroundColor3 = Akbar.Theme.Surface2
         Frame.BackgroundTransparency = 0.5
         Frame.Parent = containerFrame
@@ -1778,6 +1894,20 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         Title.TextXAlignment = Enum.TextXAlignment.Left
         Title.Parent = Frame
 
+        -- NEW: Optional desc label for slider
+        if desc ~= "" then
+            local SliderDesc = Instance.new("TextLabel")
+            SliderDesc.Position = UDim2.new(0, 14, 0, 24)
+            SliderDesc.Size = UDim2.new(1, -90, 0, 14)
+            SliderDesc.BackgroundTransparency = 1
+            SliderDesc.Font = Enum.Font.Gotham
+            SliderDesc.Text = desc
+            SliderDesc.TextColor3 = Akbar.Theme.Muted
+            SliderDesc.TextSize = 11
+            SliderDesc.TextXAlignment = Enum.TextXAlignment.Left
+            SliderDesc.Parent = Frame
+        end
+
         local ValLabel = Instance.new("TextLabel")
         ValLabel.AnchorPoint = Vector2.new(1, 0)
         ValLabel.Position = UDim2.new(1, -14, 0, 8)
@@ -1791,7 +1921,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         ValLabel.Parent = Frame
 
         local SliderBar = Instance.new("Frame")
-        SliderBar.Position = UDim2.new(0, 14, 0, 34)
+        SliderBar.Position = UDim2.new(0, 14, 0, sliderBarY)
         SliderBar.Size = UDim2.new(1, -28, 0, 8)
         SliderBar.BackgroundColor3 = Akbar.Theme.Border
         SliderBar.Parent = Frame
@@ -1801,7 +1931,8 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         BarCorner.Parent = SliderBar
 
         local Fill = Instance.new("Frame")
-        Fill.Size = UDim2.new((current - range[1]) / (range[2] - range[1]), 0, 1, 0)
+        -- FIX: Guard division by zero with rangeSpan
+        Fill.Size = UDim2.new((current - range[1]) / rangeSpan, 0, 1, 0)
         Fill.BackgroundColor3 = Akbar.Theme.Accent
         Fill.BorderSizePixel = 0
         Fill.Parent = SliderBar
@@ -1819,12 +1950,13 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         TouchArea.Parent = SliderBar
 
         local function UpdateFromPercent(percent)
-            local raw = range[1] + (range[2] - range[1]) * math.clamp(percent, 0, 1)
+            -- FIX: Use rangeSpan to avoid division by zero
+            local raw = range[1] + rangeSpan * math.clamp(percent, 0, 1)
             local stepped = math.floor((raw / inc) + 0.5) * inc
             stepped = math.clamp(stepped, range[1], range[2])
             Slider.Value = stepped
             ValLabel.Text = tostring(stepped) .. suffix
-            Tween(Fill, TweenInfo.new(0.08), { Size = UDim2.new((stepped - range[1]) / (range[2] - range[1]), 0, 1, 0) })
+            Tween(Fill, TweenInfo.new(0.08), { Size = UDim2.new((stepped - range[1]) / rangeSpan, 0, 1, 0) })
             pcall(cb, stepped)
         end
 
@@ -1859,10 +1991,13 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         end)
 
         function Slider:Set(val)
-            local clamped = math.clamp(val, range[1], range[2])
+            -- FIX: Apply increment stepping (was missing, unlike drag which used UpdateFromPercent)
+            local stepped = math.floor((val / inc) + 0.5) * inc
+            local clamped = math.clamp(stepped, range[1], range[2])
             Slider.Value = clamped
             ValLabel.Text = tostring(clamped) .. suffix
-            Fill.Size = UDim2.new((clamped - range[1]) / (range[2] - range[1]), 0, 1, 0)
+            -- FIX: Use rangeSpan to avoid division by zero
+            Fill.Size = UDim2.new((clamped - range[1]) / rangeSpan, 0, 1, 0)
             pcall(cb, clamped)
         end
         function Slider:Get() return Slider.Value end
@@ -1923,6 +2058,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         local DecBtn = Instance.new("TextButton")
         DecBtn.Size = UDim2.new(0, 26, 1, 0)
         DecBtn.BackgroundTransparency = 1
+        DecBtn.AutoButtonColor = false  -- FIX: prevents ugly default click flash
         DecBtn.Font = Enum.Font.GothamBold
         DecBtn.Text = "-"
         DecBtn.TextColor3 = Akbar.Theme.Text
@@ -1934,6 +2070,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         IncBtn.Position = UDim2.new(1, 0, 0, 0)
         IncBtn.Size = UDim2.new(0, 26, 1, 0)
         IncBtn.BackgroundTransparency = 1
+        IncBtn.AutoButtonColor = false  -- FIX: prevents ugly default click flash
         IncBtn.Font = Enum.Font.GothamBold
         IncBtn.Text = "+"
         IncBtn.TextColor3 = Akbar.Theme.Text
@@ -1980,14 +2117,29 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         dropConfig = dropConfig or {}
         local name = dropConfig.Name or "Dropdown"
         local options = dropConfig.Options or {}
-        local current = dropConfig.CurrentOption or options[1]
+        -- FIX: Handle nil current option when options list is empty
+        local current = dropConfig.CurrentOption or (options[1] ~= nil and options[1] or nil)
         local isMulti = dropConfig.MultipleOptions or false
         local flag = dropConfig.Flag
         local cb = dropConfig.Callback or function() end
 
+        -- FIX: For multi-mode with nil current, start with empty table instead of {nil}
+        local initValue
+        if isMulti then
+            if type(current) == "table" then
+                initValue = current
+            elseif current ~= nil then
+                initValue = { current }
+            else
+                initValue = {}
+            end
+        else
+            initValue = current
+        end
+
         local Dropdown = {
             Open = false,
-            Value = isMulti and (type(current) == "table" and current or {current}) or current,
+            Value = initValue,
             Options = options
         }
 
@@ -2026,7 +2178,10 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         Display.Size = UDim2.new(0, 110, 0, 24)
         Display.BackgroundTransparency = 1
         Display.Font = Enum.Font.Gotham
-        Display.Text = isMulti and table.concat(Dropdown.Value, ", ") or tostring(Dropdown.Value)
+        -- FIX: Show placeholder instead of "nil" when no option selected
+        Display.Text = isMulti and (
+            #Dropdown.Value > 0 and table.concat(Dropdown.Value, ", ") or "None"
+        ) or (Dropdown.Value ~= nil and tostring(Dropdown.Value) or "None")
         Display.TextColor3 = Akbar.Theme.Muted
         Display.TextSize = 12
         Display.TextTruncate = Enum.TextTruncate.AtEnd
@@ -2121,7 +2276,12 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
 
         function Dropdown:Set(val)
             Dropdown.Value = val
-            Display.Text = isMulti and table.concat(val, ", ") or tostring(val)
+            -- FIX: Don't show "nil", show "None" as placeholder
+            if isMulti then
+                Display.Text = (type(val) == "table" and #val > 0) and table.concat(val, ", ") or "None"
+            else
+                Display.Text = val ~= nil and tostring(val) or "None"
+            end
             BuildOptions()
             pcall(cb, val)
         end
@@ -2129,6 +2289,37 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         function Dropdown:SetOpen(st) SetDropdownOpen(st) end
         function Dropdown:Refresh(newOpts)
             Dropdown.Options = newOpts
+            BuildOptions()
+        end
+        -- NEW: Add a single option dynamically
+        function Dropdown:AddOption(opt)
+            if opt ~= nil and not table.find(Dropdown.Options, opt) then
+                table.insert(Dropdown.Options, opt)
+                BuildOptions()
+            end
+        end
+        -- NEW: Remove a single option dynamically
+        function Dropdown:RemoveOption(opt)
+            local idx = table.find(Dropdown.Options, opt)
+            if idx then
+                table.remove(Dropdown.Options, idx)
+                -- Clear value if it was the removed option
+                if not isMulti and Dropdown.Value == opt then
+                    Dropdown.Value = Dropdown.Options[1]
+                    Display.Text = Dropdown.Value ~= nil and tostring(Dropdown.Value) or "None"
+                elseif isMulti then
+                    local vi = table.find(Dropdown.Value, opt)
+                    if vi then table.remove(Dropdown.Value, vi) end
+                    Display.Text = #Dropdown.Value > 0 and table.concat(Dropdown.Value, ", ") or "None"
+                end
+                BuildOptions()
+            end
+        end
+        -- NEW: Clear all options
+        function Dropdown:ClearOptions()
+            Dropdown.Options = {}
+            Dropdown.Value = isMulti and {} or nil
+            Display.Text = "None"
             BuildOptions()
         end
         function Dropdown:Destroy() Frame:Destroy() end
@@ -2222,7 +2413,13 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
             Input.Value = tostring(text)
             pcall(cb, TextBox.Text, false)
         end
+        -- NEW: Clear the input field
+        function Input:Clear()
+            TextBox.Text = ""
+            Input.Value = ""
+        end
         function Input:Get() return Input.Value end
+        function Input:Focus() TextBox:CaptureFocus() end
         function Input:Destroy() Frame:Destroy() end
 
         if flag and Window.Config then
@@ -2323,7 +2520,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         return Keybind
     end
 
-    -- 9. COLOR PICKER
+    -- 9. COLOR PICKER (Full HSV Panel — redesigned from preset-only version)
     function targetScope:CreateColorPicker(cpConfig)
         cpConfig = cpConfig or {}
         local name = cpConfig.Name or "Color Picker"
@@ -2331,7 +2528,16 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         local flag = cpConfig.Flag
         local cb = cpConfig.Callback or function() end
 
+        -- Extract initial HSV from default color
+        local hue, sat, val = Color3.toHSV(defaultColor)
+
         local ColorPicker = { Value = defaultColor, Open = false }
+
+        local EXPANDED_H = 256 -- total expanded height
+        local CANVAS_H   = 120
+        local HUE_H      = 16
+        local HEX_H      = 28
+        local PRESET_H   = 30
 
         local Frame = Instance.new("Frame")
         Frame.Name = "ColorPicker_" .. name
@@ -2345,22 +2551,23 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         Corner.CornerRadius = UDim.new(0, 8)
         Corner.Parent = Frame
 
+        -- ── Header row ──────────────────────────────────────────────────────────
         local MainBtn = Instance.new("TextButton")
         MainBtn.Size = UDim2.new(1, 0, 0, 44)
         MainBtn.BackgroundTransparency = 1
         MainBtn.Text = ""
         MainBtn.Parent = Frame
 
-        local Title = Instance.new("TextLabel")
-        Title.Position = UDim2.new(0, 14, 0, 0)
-        Title.Size = UDim2.new(1, -80, 0, 44)
-        Title.BackgroundTransparency = 1
-        Title.Font = Enum.Font.GothamMedium
-        Title.Text = name
-        Title.TextColor3 = Akbar.Theme.Text
-        Title.TextSize = 13
-        Title.TextXAlignment = Enum.TextXAlignment.Left
-        Title.Parent = MainBtn
+        local TitleLbl = Instance.new("TextLabel")
+        TitleLbl.Position = UDim2.new(0, 14, 0, 0)
+        TitleLbl.Size = UDim2.new(1, -80, 0, 44)
+        TitleLbl.BackgroundTransparency = 1
+        TitleLbl.Font = Enum.Font.GothamMedium
+        TitleLbl.Text = name
+        TitleLbl.TextColor3 = Akbar.Theme.Text
+        TitleLbl.TextSize = 13
+        TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
+        TitleLbl.Parent = MainBtn
 
         local PreviewBox = Instance.new("Frame")
         PreviewBox.AnchorPoint = Vector2.new(1, 0.5)
@@ -2378,37 +2585,288 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         PStroke.Thickness = 1
         PStroke.Parent = PreviewBox
 
+        -- ── HSV Sat/Val Canvas ───────────────────────────────────────────────────
+        local Canvas = Instance.new("Frame")
+        Canvas.Name = "SVCanvas"
+        Canvas.Position = UDim2.new(0, 12, 0, 50)
+        Canvas.Size = UDim2.new(1, -24, 0, CANVAS_H)
+        Canvas.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+        Canvas.ClipsDescendants = true
+        Canvas.Parent = Frame
+
+        local CCorner = Instance.new("UICorner")
+        CCorner.CornerRadius = UDim.new(0, 6)
+        CCorner.Parent = Canvas
+
+        -- White → Hue saturation gradient (horizontal)
+        local SatLayer = Instance.new("Frame")
+        SatLayer.Size = UDim2.new(1, 0, 1, 0)
+        SatLayer.BackgroundTransparency = 1
+        SatLayer.Parent = Canvas
+
+        local SatGrad = Instance.new("UIGradient")
+        SatGrad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))
+        })
+        SatGrad.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0),
+            NumberSequenceKeypoint.new(1, 1)
+        })
+        SatGrad.Rotation = 0
+        SatGrad.Parent = SatLayer
+
+        -- Transparent → Black value gradient (vertical)
+        local ValLayer = Instance.new("Frame")
+        ValLayer.Size = UDim2.new(1, 0, 1, 0)
+        ValLayer.BackgroundTransparency = 1
+        ValLayer.Parent = Canvas
+
+        local ValGrad = Instance.new("UIGradient")
+        ValGrad.Color = ColorSequence.new(Color3.fromRGB(0, 0, 0))
+        ValGrad.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(1, 0)
+        })
+        ValGrad.Rotation = 90
+        ValGrad.Parent = ValLayer
+
+        -- Picker dot
+        local PickerDot = Instance.new("Frame")
+        PickerDot.Name = "Dot"
+        PickerDot.Size = UDim2.new(0, 12, 0, 12)
+        PickerDot.AnchorPoint = Vector2.new(0.5, 0.5)
+        PickerDot.Position = UDim2.new(sat, 0, 1 - val, 0)
+        PickerDot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        PickerDot.ZIndex = 5
+        PickerDot.Parent = Canvas
+
+        local DotCorner = Instance.new("UICorner")
+        DotCorner.CornerRadius = UDim.new(1, 0)
+        DotCorner.Parent = PickerDot
+
+        local DotStroke = Instance.new("UIStroke")
+        DotStroke.Color = Color3.fromRGB(0, 0, 0)
+        DotStroke.Thickness = 1.5
+        DotStroke.Parent = PickerDot
+
+        -- ── Hue Bar ───────────────────────────────────────────────────────────────
+        local HueBar = Instance.new("Frame")
+        HueBar.Position = UDim2.new(0, 12, 0, 50 + CANVAS_H + 8)
+        HueBar.Size = UDim2.new(1, -24, 0, HUE_H)
+        HueBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        HueBar.Parent = Frame
+
+        local HBarCorner = Instance.new("UICorner")
+        HBarCorner.CornerRadius = UDim.new(1, 0)
+        HBarCorner.Parent = HueBar
+
+        local HueGrad = Instance.new("UIGradient")
+        HueGrad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0,     Color3.fromRGB(255, 0,   0)),
+            ColorSequenceKeypoint.new(0.167, Color3.fromRGB(255, 255, 0)),
+            ColorSequenceKeypoint.new(0.333, Color3.fromRGB(0,   255, 0)),
+            ColorSequenceKeypoint.new(0.5,   Color3.fromRGB(0,   255, 255)),
+            ColorSequenceKeypoint.new(0.667, Color3.fromRGB(0,   0,   255)),
+            ColorSequenceKeypoint.new(0.833, Color3.fromRGB(255, 0,   255)),
+            ColorSequenceKeypoint.new(1,     Color3.fromRGB(255, 0,   0))
+        })
+        HueGrad.Parent = HueBar
+
+        -- Hue thumb
+        local HueCursor = Instance.new("Frame")
+        HueCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+        HueCursor.Position = UDim2.new(hue, 0, 0.5, 0)
+        HueCursor.Size = UDim2.new(0, 6, 0, HUE_H + 6)
+        HueCursor.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        HueCursor.ZIndex = 5
+        HueCursor.Parent = HueBar
+
+        local HCursorCorner = Instance.new("UICorner")
+        HCursorCorner.CornerRadius = UDim.new(1, 0)
+        HCursorCorner.Parent = HueCursor
+
+        local HCursorStroke = Instance.new("UIStroke")
+        HCursorStroke.Color = Color3.fromRGB(30, 30, 30)
+        HCursorStroke.Thickness = 1.5
+        HCursorStroke.Parent = HueCursor
+
+        -- Touch area for hue bar
+        local HueTouchArea = Instance.new("TextButton")
+        HueTouchArea.Size = UDim2.new(1, 0, 1, 0)
+        HueTouchArea.BackgroundTransparency = 1
+        HueTouchArea.Text = ""
+        HueTouchArea.ZIndex = 6
+        HueTouchArea.Parent = HueBar
+
+        -- ── Hex Input ─────────────────────────────────────────────────────────────
+        local HexRow = Instance.new("Frame")
+        HexRow.Position = UDim2.new(0, 12, 0, 50 + CANVAS_H + 8 + HUE_H + 8)
+        HexRow.Size = UDim2.new(1, -24, 0, HEX_H)
+        HexRow.BackgroundColor3 = Akbar.Theme.Surface
+        HexRow.Parent = Frame
+
+        local HexCorner = Instance.new("UICorner")
+        HexCorner.CornerRadius = UDim.new(0, 6)
+        HexCorner.Parent = HexRow
+
+        local HexStroke = Instance.new("UIStroke")
+        HexStroke.Color = Akbar.Theme.Border
+        HexStroke.Thickness = 1
+        HexStroke.Parent = HexRow
+
+        local HexLabel = Instance.new("TextLabel")
+        HexLabel.Position = UDim2.new(0, 8, 0, 0)
+        HexLabel.Size = UDim2.new(0, 20, 1, 0)
+        HexLabel.BackgroundTransparency = 1
+        HexLabel.Font = Enum.Font.GothamBold
+        HexLabel.Text = "#"
+        HexLabel.TextColor3 = Akbar.Theme.Muted
+        HexLabel.TextSize = 12
+        HexLabel.Parent = HexRow
+
+        local HexInput = Instance.new("TextBox")
+        HexInput.Position = UDim2.new(0, 26, 0, 0)
+        HexInput.Size = UDim2.new(1, -34, 1, 0)
+        HexInput.BackgroundTransparency = 1
+        HexInput.Font = Enum.Font.GothamMedium
+        HexInput.Text = string.format("%02X%02X%02X", math.floor(defaultColor.R*255), math.floor(defaultColor.G*255), math.floor(defaultColor.B*255))
+        HexInput.TextColor3 = Akbar.Theme.Text
+        HexInput.TextSize = 12
+        HexInput.ClearTextOnFocus = false
+        HexInput.PlaceholderText = "RRGGBB"
+        HexInput.PlaceholderColor3 = Akbar.Theme.Muted
+        HexInput.Parent = HexRow
+
+        -- ── Preset row ────────────────────────────────────────────────────────────
         local PresetsHolder = Instance.new("Frame")
-        PresetsHolder.Position = UDim2.new(0, 14, 0, 48)
-        PresetsHolder.Size = UDim2.new(1, -28, 0, 32)
+        PresetsHolder.Position = UDim2.new(0, 12, 0, 50 + CANVAS_H + 8 + HUE_H + 8 + HEX_H + 8)
+        PresetsHolder.Size = UDim2.new(1, -24, 0, PRESET_H)
         PresetsHolder.BackgroundTransparency = 1
         PresetsHolder.Parent = Frame
 
         local PLayout = Instance.new("UIListLayout")
         PLayout.FillDirection = Enum.FillDirection.Horizontal
+        PLayout.VerticalAlignment = Enum.VerticalAlignment.Center
         PLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-        PLayout.Padding = UDim.new(0, 8)
+        PLayout.Padding = UDim.new(0, 6)
         PLayout.Parent = PresetsHolder
 
         local presetColors = {
-            Color3.fromRGB(56, 130, 255),
-            Color3.fromRGB(46, 204, 113),
-            Color3.fromRGB(241, 196, 15),
-            Color3.fromRGB(231, 76, 60),
-            Color3.fromRGB(155, 89, 182),
-            Color3.fromRGB(255, 255, 255),
-            Color3.fromRGB(26, 26, 26)
+            Color3.fromRGB(56, 130, 255),  Color3.fromRGB(46, 204, 113),
+            Color3.fromRGB(241, 196, 15),  Color3.fromRGB(231, 76, 60),
+            Color3.fromRGB(155, 89, 182),  Color3.fromRGB(52, 152, 219),
+            Color3.fromRGB(255, 255, 255), Color3.fromRGB(26, 26, 26)
         }
 
-        local function SetColor(col)
+        -- ── Core color update logic ───────────────────────────────────────────────
+        local function ApplyColor(col, skipHexUpdate)
             ColorPicker.Value = col
             PreviewBox.BackgroundColor3 = col
+            if not skipHexUpdate then
+                HexInput.Text = string.format("%02X%02X%02X",
+                    math.floor(col.R * 255),
+                    math.floor(col.G * 255),
+                    math.floor(col.B * 255))
+            end
             pcall(cb, col)
         end
 
+        local function UpdateFromHSV()
+            local col = Color3.fromHSV(hue, sat, val)
+            Canvas.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+            PickerDot.Position = UDim2.new(sat, 0, 1 - val, 0)
+            HueCursor.Position = UDim2.new(hue, 0, 0.5, 0)
+            ApplyColor(col)
+        end
+
+        -- Canvas drag (Saturation X, Value Y)
+        local svDragging = false
+        local svParent = FindParentScroll(containerFrame)
+
+        Canvas.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                svDragging = true
+                if svParent then svParent.ScrollingEnabled = false end
+
+                local relX = math.clamp((input.Position.X - Canvas.AbsolutePosition.X) / Canvas.AbsoluteSize.X, 0, 1)
+                local relY = math.clamp((input.Position.Y - Canvas.AbsolutePosition.Y) / Canvas.AbsoluteSize.Y, 0, 1)
+                sat = relX
+                val = 1 - relY
+                UpdateFromHSV()
+
+                local mc, ec
+                mc = UserInputService.InputChanged:Connect(function(mi)
+                    if svDragging and (mi.UserInputType == Enum.UserInputType.MouseMovement or mi.UserInputType == Enum.UserInputType.Touch) then
+                        relX = math.clamp((mi.Position.X - Canvas.AbsolutePosition.X) / Canvas.AbsoluteSize.X, 0, 1)
+                        relY = math.clamp((mi.Position.Y - Canvas.AbsolutePosition.Y) / Canvas.AbsoluteSize.Y, 0, 1)
+                        sat = relX
+                        val = 1 - relY
+                        UpdateFromHSV()
+                    end
+                end)
+                ec = UserInputService.InputEnded:Connect(function(ei)
+                    if ei.UserInputType == Enum.UserInputType.MouseButton1 or ei.UserInputType == Enum.UserInputType.Touch then
+                        svDragging = false
+                        if svParent then svParent.ScrollingEnabled = true end
+                        if mc then mc:Disconnect() end
+                        if ec then ec:Disconnect() end
+                    end
+                end)
+            end
+        end)
+
+        -- Hue bar drag
+        local hueDragging = false
+
+        HueTouchArea.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                hueDragging = true
+                hue = math.clamp((input.Position.X - HueBar.AbsolutePosition.X) / HueBar.AbsoluteSize.X, 0, 1)
+                UpdateFromHSV()
+
+                local mc, ec
+                mc = UserInputService.InputChanged:Connect(function(mi)
+                    if hueDragging and (mi.UserInputType == Enum.UserInputType.MouseMovement or mi.UserInputType == Enum.UserInputType.Touch) then
+                        hue = math.clamp((mi.Position.X - HueBar.AbsolutePosition.X) / HueBar.AbsoluteSize.X, 0, 1)
+                        UpdateFromHSV()
+                    end
+                end)
+                ec = UserInputService.InputEnded:Connect(function(ei)
+                    if ei.UserInputType == Enum.UserInputType.MouseButton1 or ei.UserInputType == Enum.UserInputType.Touch then
+                        hueDragging = false
+                        if mc then mc:Disconnect() end
+                        if ec then ec:Disconnect() end
+                    end
+                end)
+            end
+        end)
+
+        -- Hex input
+        HexInput.FocusLost:Connect(function()
+            local hex = HexInput.Text:gsub("#", ""):upper()
+            if #hex == 6 then
+                local r = tonumber(hex:sub(1,2), 16)
+                local g = tonumber(hex:sub(3,4), 16)
+                local b = tonumber(hex:sub(5,6), 16)
+                if r and g and b then
+                    local col = Color3.fromRGB(r, g, b)
+                    hue, sat, val = Color3.toHSV(col)
+                    UpdateFromHSV()
+                end
+            else
+                -- Revert to current value if hex is invalid
+                HexInput.Text = string.format("%02X%02X%02X",
+                    math.floor(ColorPicker.Value.R*255),
+                    math.floor(ColorPicker.Value.G*255),
+                    math.floor(ColorPicker.Value.B*255))
+            end
+        end)
+
+        -- Presets
         for _, col in ipairs(presetColors) do
             local dot = Instance.new("TextButton")
-            dot.Size = UDim2.new(0, 26, 0, 26)
+            dot.Size = UDim2.new(0, 22, 0, 22)
             dot.BackgroundColor3 = col
             dot.Text = ""
             dot.AutoButtonColor = false
@@ -2418,19 +2876,29 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
             dCorner.CornerRadius = UDim.new(1, 0)
             dCorner.Parent = dot
 
+            local dStroke = Instance.new("UIStroke")
+            dStroke.Color = Akbar.Theme.Border
+            dStroke.Thickness = 1
+            dStroke.Parent = dot
+
             dot.Activated:Connect(function()
-                SetColor(col)
+                hue, sat, val = Color3.toHSV(col)
+                UpdateFromHSV()
             end)
         end
 
+        -- Toggle expand/collapse
         MainBtn.Activated:Connect(function()
             ColorPicker.Open = not ColorPicker.Open
-            Tween(Frame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                Size = ColorPicker.Open and UDim2.new(1, 0, 0, 88) or UDim2.new(1, 0, 0, 44)
+            Tween(Frame, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                Size = ColorPicker.Open and UDim2.new(1, 0, 0, 44 + 6 + EXPANDED_H) or UDim2.new(1, 0, 0, 44)
             })
         end)
 
-        function ColorPicker:Set(col) SetColor(col) end
+        function ColorPicker:Set(col)
+            hue, sat, val = Color3.toHSV(col)
+            UpdateFromHSV()
+        end
         function ColorPicker:Get() return ColorPicker.Value end
         function ColorPicker:Destroy() Frame:Destroy() end
 
