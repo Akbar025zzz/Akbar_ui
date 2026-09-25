@@ -393,8 +393,13 @@ local function BuildAPI(container, ownerTab)
         Holder.LayoutOrder = NextOrder()
         Holder.Parent = container
 
+        local HolderLayout = Instance.new("UIListLayout") -- FIX: cegah Header & Clip overlap di (0,0)
+        HolderLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        HolderLayout.Parent = Holder
+
         local Header = Instance.new("TextButton")
         Header.Size = UDim2.new(1, 0, 0, 34)
+        Header.LayoutOrder = 1 -- FIX
         Themed(Header, "BackgroundColor3", "Surface2")
         Header.BackgroundTransparency = 0.35
         Header.AutoButtonColor = false
@@ -427,6 +432,7 @@ local function BuildAPI(container, ownerTab)
 
         local Clip = Instance.new("Frame")
         Clip.Size = UDim2.new(1, 0, 0, 0)
+        Clip.LayoutOrder = 2 -- FIX
         Clip.ClipsDescendants = true
         Clip.BackgroundTransparency = 1
         Clip.BorderSizePixel = 0
