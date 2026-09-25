@@ -1,12 +1,12 @@
 --[[
-    AKBAR UI — Modern Dark Glassmorphism UI Framework
+    AKBAR UI — Modern Dark Glassmorphism UI Framework (Enhanced Edition)
     Brand: AKBAR UI / King Akbar
     Architecture: Modular, Event-Cleaned, Mobile & PC Responsive
 ]]
 
 local Akbar = {}
 Akbar.__index = Akbar
-Akbar.Version = "1.0.0"
+Akbar.Version = "1.1.0"
 Akbar.AnimationEnabled = true
 
 -- Services
@@ -62,6 +62,7 @@ local Icons = {
     ["chevron-up"] = "rbxassetid://7733717651",
     ["check"] = "rbxassetid://7733715400",
     ["save"] = "rbxassetid://7734052335",
+    ["palette"] = "rbxassetid://7734053495",
     ["fallback"] = "rbxassetid://7733964719"
 }
 
@@ -611,8 +612,9 @@ function Akbar:CreateWindow(config)
         local minY = currentSize.Y / 2
         local maxY = viewportSize.Y - (currentSize.Y / 2)
 
-        local clampedX = math.clamp(MainShadow.AbsolutePosition.X + minX, minX, math.max(minX, maxX))
-        local clampedY = math.clamp(MainShadow.AbsolutePosition.Y + minY, minY, math.max(minY, maxY))
+        local currentCenter = Vector2.new(MainShadow.AbsolutePosition.X + minX, MainShadow.AbsolutePosition.Y + minY)
+        local clampedX = math.clamp(currentCenter.X, minX, math.max(minX, maxX))
+        local clampedY = math.clamp(currentCenter.Y, minY, math.max(minY, maxY))
         
         MainShadow.Position = UDim2.new(0, clampedX, 0, clampedY)
     end
@@ -720,8 +722,9 @@ function Akbar:CreateWindow(config)
         end
     end)
 
+    -- Ubah close agar menyembunyikan frame agar bisa dibuka lagi via Top-Left Icon
     CloseBtn.MouseButton1Click:Connect(function()
-        Window:Destroy()
+        MainShadow.Visible = false
     end)
 
     -- Search Tab Filtering
@@ -738,57 +741,99 @@ function Akbar:CreateWindow(config)
         end
     end)
 
-    -- Floating Open Button
+    -- 🌟 FLOATING TOGGLE ICON (POJOK KIRI ATAS - MOBILE & PC FRIENDLY)
     local OpenButton = nil
     if config.OpenButton ~= false then
         local btnConfig = config.OpenButton or {}
         local FloatBtn = Instance.new("ImageButton")
-        FloatBtn.Name = "Akbar_OpenButton"
-        FloatBtn.Size = UDim2.new(0, 48, 0, 48)
-        FloatBtn.Position = UDim2.new(0, 20, 0.5, -24)
+        FloatBtn.Name = "Akbar_ToggleIcon"
+        FloatBtn.Size = UDim2.new(0, 42, 0, 42)
+        -- Posisi default di pojok kiri atas
+        FloatBtn.Position = btnConfig.Position or UDim2.new(0, 16, 0, 16)
         FloatBtn.BackgroundColor3 = Akbar.Theme.Surface
         FloatBtn.BackgroundTransparency = 0.2
-        FloatBtn.Image = GetIcon(btnConfig.Icon or "crown")
+        FloatBtn.Image = GetIcon(btnConfig.Icon or WindowIcon or "crown")
         FloatBtn.ImageColor3 = Akbar.Theme.Accent
-        FloatBtn.Visible = false
+        FloatBtn.Visible = true
+        FloatBtn.ZIndex = 120
         SafeParentGui(FloatBtn, ScreenGui)
 
         local FloatCorner = Instance.new("UICorner")
-        FloatCorner.CornerRadius = UDim.new(0, 14)
+        FloatCorner.CornerRadius = UDim.new(0, 10)
         FloatCorner.Parent = FloatBtn
 
         local FloatStroke = Instance.new("UIStroke")
-        FloatStroke.Color = Akbar.Theme.Accent
-        FloatStroke.Transparency = 0.4
-        FloatStroke.Thickness = 1.5
+        FloatStroke.Color = Akbar.Theme.BorderLight
+        FloatStroke.Transparency = 0.3
+        FloatStroke.Thickness = 1.2
         FloatStroke.Parent = FloatBtn
 
-        local fDragging, fStart, fPos
+        -- Sistem Dragging untuk Icon
+        local fDragging = false
+        local fStart = nil
+        local fPos = nil
+        local hasMoved = false
+
         FloatBtn.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 fDragging = true
+                hasMoved = false
                 fStart = input.Position
                 fPos = FloatBtn.Position
-                input.Changed:Connect(function()
+
+                local releaseConn
+                releaseConn = input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         fDragging = false
+                        if releaseConn then releaseConn:Disconnect() end
                     end
                 end)
             end
         end)
+
         UserInputService.InputChanged:Connect(function(input)
             if fDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - fStart
-                FloatBtn.Position = UDim2.new(fPos.X.Scale, fPos.X.Offset + delta.X, fPos.Y.Scale, fPos.Y.Offset + delta.Y)
+                if math.abs(delta.X) > 4 or math.abs(delta.Y) > 4 then
+                    hasMoved = true
+                end
+                FloatBtn.Position = UDim2.new(
+                    fPos.X.Scale,
+                    fPos.X.Offset + delta.X,
+                    fPos.Y.Scale,
+                    fPos.Y.Offset + delta.Y
+                )
             end
         end)
 
+        -- Fungsi Toggle Buka / Tutup dengan Animasi Halus
+        local function ToggleWindow()
+            local willOpen = not MainShadow.Visible
+            
+            Tween(FloatBtn, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.new(0, 36, 0, 36) })
+            task.delay(0.1, function()
+                Tween(FloatBtn, TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Size = UDim2.new(0, 42, 0, 42) })
+            end)
+
+            if willOpen then
+                MainShadow.Visible = true
+                MainShadow.Size = UDim2.fromOffset(Window.Size.X.Offset * 0.92, Window.Size.Y.Offset * 0.92)
+                Tween(MainShadow, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    Size = Window.Size
+                })
+            else
+                local closeTween = Tween(MainShadow, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+                    Size = UDim2.fromOffset(Window.Size.X.Offset * 0.88, Window.Size.Y.Offset * 0.88)
+                })
+                if closeTween then closeTween.Completed:Wait() end
+                MainShadow.Visible = false
+            end
+        end
+
         FloatBtn.MouseButton1Click:Connect(function()
-            MainShadow.Visible = true
-            FloatBtn.Visible = false
-            Tween(MainShadow, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                Position = UDim2.new(0.5, 0, 0.5, 0)
-            })
+            if not hasMoved then
+                ToggleWindow()
+            end
         end)
 
         OpenButton = FloatBtn
@@ -800,9 +845,6 @@ function Akbar:CreateWindow(config)
         if processed then return end
         if input.KeyCode.Name == ToggleKey then
             MainShadow.Visible = not MainShadow.Visible
-            if OpenButton then
-                OpenButton.Visible = not MainShadow.Visible
-            end
         end
     end))
 
@@ -1340,7 +1382,7 @@ Akbar.Window = Akbar.CreateWindow
 function Akbar:_InjectComponentMethods(targetScope, containerFrame)
     local Window = targetScope.Window or targetScope
 
-    -- 1. COLLAPSIBLE GROUP (Accordion Highlight Feature)
+    -- 1. COLLAPSIBLE GROUP
     function targetScope:CreateCollapsible(colConfig)
         colConfig = colConfig or {}
         local colName = colConfig.Name or "Collapsible Group"
@@ -1686,7 +1728,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         return Button
     end
 
-    -- 4. SLIDER
+    -- 4. SLIDER (Fixed Event Cleanup)
     function targetScope:CreateSlider(sliderConfig)
         sliderConfig = sliderConfig or {}
         local name = sliderConfig.Name or "Slider"
@@ -1772,20 +1814,22 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
                 isDragging = true
                 local percent = (input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X
                 UpdateFromPercent(percent)
-                local conn
-                conn = input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        isDragging = false
-                        conn:Disconnect()
+
+                local moveConn, endConn
+                moveConn = UserInputService.InputChanged:Connect(function(moveInput)
+                    if isDragging and (moveInput.UserInputType == Enum.UserInputType.MouseMovement or moveInput.UserInputType == Enum.UserInputType.Touch) then
+                        local curPercent = (moveInput.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X
+                        UpdateFromPercent(curPercent)
                     end
                 end)
-            end
-        end)
 
-        UserInputService.InputChanged:Connect(function(input)
-            if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                local percent = (input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X
-                UpdateFromPercent(percent)
+                endConn = UserInputService.InputEnded:Connect(function(endInput)
+                    if endInput.UserInputType == Enum.UserInputType.MouseButton1 or endInput.UserInputType == Enum.UserInputType.Touch then
+                        isDragging = false
+                        if moveConn then moveConn:Disconnect() end
+                        if endConn then endConn:Disconnect() end
+                    end
+                end)
             end
         end)
 
@@ -1806,13 +1850,14 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         return Slider
     end
 
-    -- 5. STEPPER
+    -- 5. STEPPER (Added Config Registration)
     function targetScope:CreateStepper(stepConfig)
         stepConfig = stepConfig or {}
         local name = stepConfig.Name or "Stepper"
         local range = stepConfig.Range or {0, 100}
         local inc = stepConfig.Increment or 1
         local current = stepConfig.CurrentValue or range[1]
+        local flag = stepConfig.Flag
         local cb = stepConfig.Callback or function() end
 
         local Stepper = { Value = current }
@@ -1898,10 +1943,14 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         function Stepper:Get() return Stepper.Value end
         function Stepper:Destroy() Frame:Destroy() end
 
+        if flag and Window.Config then
+            Window.Config:Register(flag, function() return Stepper:Get() end, function(v) Stepper:Set(v) end)
+        end
+
         return Stepper
     end
 
-    -- 6. DROPDOWN
+    -- 6. DROPDOWN (Enhanced Active States)
     function targetScope:CreateDropdown(dropConfig)
         dropConfig = dropConfig or {}
         local name = dropConfig.Name or "Dropdown"
@@ -1994,13 +2043,14 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
             end
 
             for _, opt in ipairs(Dropdown.Options) do
+                local isSelected = isMulti and table.find(Dropdown.Value, opt) or (Dropdown.Value == opt)
                 local ob = Instance.new("TextButton")
                 ob.Size = UDim2.new(1, -4, 0, 28)
-                ob.BackgroundColor3 = Akbar.Theme.Surface
+                ob.BackgroundColor3 = isSelected and Akbar.Theme.SurfaceHover or Akbar.Theme.Surface
                 ob.AutoButtonColor = false
                 ob.Font = Enum.Font.Gotham
                 ob.Text = "  " .. tostring(opt)
-                ob.TextColor3 = Akbar.Theme.Muted
+                ob.TextColor3 = isSelected and Akbar.Theme.Accent or Akbar.Theme.Muted
                 ob.TextSize = 12
                 ob.TextXAlignment = Enum.TextXAlignment.Left
                 ob.Parent = ListScroll
@@ -2018,10 +2068,12 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
                             table.insert(Dropdown.Value, opt)
                         end
                         Display.Text = table.concat(Dropdown.Value, ", ")
+                        BuildOptions()
                         pcall(cb, Dropdown.Value)
                     else
                         Dropdown.Value = opt
                         Display.Text = tostring(opt)
+                        BuildOptions()
                         Dropdown:SetOpen(false)
                         pcall(cb, opt)
                     end
@@ -2045,6 +2097,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         function Dropdown:Set(val)
             Dropdown.Value = val
             Display.Text = isMulti and table.concat(val, ", ") or tostring(val)
+            BuildOptions()
             pcall(cb, val)
         end
         function Dropdown:Get() return Dropdown.Value end
@@ -2154,7 +2207,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         return Input
     end
 
-    -- 8. KEYBIND
+    -- 8. KEYBIND (Cleaned Event Management)
     function targetScope:CreateKeybind(kbConfig)
         kbConfig = kbConfig or {}
         local name = kbConfig.Name or "Keybind"
@@ -2209,18 +2262,23 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
             BindBtn.Text = "..."
         end)
 
-        UserInputService.InputBegan:Connect(function(inp, proc)
+        local bindConn = UserInputService.InputBegan:Connect(function(inp, proc)
             if isBinding and not proc then
                 if inp.UserInputType == Enum.UserInputType.Keyboard then
-                    Keybind.Value = inp.KeyCode.Name
-                    BindBtn.Text = inp.KeyCode.Name
+                    if inp.KeyCode == Enum.KeyCode.Escape then
+                        Keybind.Value = "None"
+                    else
+                        Keybind.Value = inp.KeyCode.Name
+                    end
+                    BindBtn.Text = Keybind.Value
                     isBinding = false
-                    pcall(onChanged, inp.KeyCode.Name)
+                    pcall(onChanged, Keybind.Value)
                 end
-            elseif not proc and inp.KeyCode.Name == Keybind.Value then
+            elseif not proc and inp.KeyCode.Name == Keybind.Value and Keybind.Value ~= "None" then
                 pcall(cb, Keybind.Value)
             end
         end)
+        table.insert(Window.Connections, bindConn)
 
         function Keybind:Set(key)
             Keybind.Value = key
@@ -2228,7 +2286,10 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
             pcall(onChanged, key)
         end
         function Keybind:Get() return Keybind.Value end
-        function Keybind:Destroy() Frame:Destroy() end
+        function Keybind:Destroy() 
+            if bindConn then bindConn:Disconnect() end
+            Frame:Destroy() 
+        end
 
         if flag and Window.Config then
             Window.Config:Register(flag, function() return Keybind:Get() end, function(v) Keybind:Set(v) end)
@@ -2237,7 +2298,126 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         return Keybind
     end
 
-    -- 9. PROGRESS BAR
+    -- 9. COLOR PICKER (NEW FEATURE)
+    function targetScope:CreateColorPicker(cpConfig)
+        cpConfig = cpConfig or {}
+        local name = cpConfig.Name or "Color Picker"
+        local defaultColor = cpConfig.Default or Color3.fromRGB(56, 130, 255)
+        local flag = cpConfig.Flag
+        local cb = cpConfig.Callback or function() end
+
+        local ColorPicker = { Value = defaultColor, Open = false }
+
+        local Frame = Instance.new("Frame")
+        Frame.Name = "ColorPicker_" .. name
+        Frame.Size = UDim2.new(1, 0, 0, 44)
+        Frame.BackgroundColor3 = Akbar.Theme.Surface2
+        Frame.BackgroundTransparency = 0.5
+        Frame.ClipsDescendants = true
+        Frame.Parent = containerFrame
+
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 8)
+        Corner.Parent = Frame
+
+        local MainBtn = Instance.new("TextButton")
+        MainBtn.Size = UDim2.new(1, 0, 0, 44)
+        MainBtn.BackgroundTransparency = 1
+        MainBtn.Text = ""
+        MainBtn.Parent = Frame
+
+        local Title = Instance.new("TextLabel")
+        Title.Position = UDim2.new(0, 14, 0, 0)
+        Title.Size = UDim2.new(1, -80, 0, 44)
+        Title.BackgroundTransparency = 1
+        Title.Font = Enum.Font.GothamMedium
+        Title.Text = name
+        Title.TextColor3 = Akbar.Theme.Text
+        Title.TextSize = 13
+        Title.TextXAlignment = Enum.TextXAlignment.Left
+        Title.Parent = MainBtn
+
+        local PreviewBox = Instance.new("Frame")
+        PreviewBox.AnchorPoint = Vector2.new(1, 0.5)
+        PreviewBox.Position = UDim2.new(1, -14, 0.5, 0)
+        PreviewBox.Size = UDim2.new(0, 36, 0, 22)
+        PreviewBox.BackgroundColor3 = defaultColor
+        PreviewBox.Parent = MainBtn
+
+        local PCorner = Instance.new("UICorner")
+        PCorner.CornerRadius = UDim.new(0, 6)
+        PCorner.Parent = PreviewBox
+
+        local PStroke = Instance.new("UIStroke")
+        PStroke.Color = Akbar.Theme.Border
+        PStroke.Thickness = 1
+        PStroke.Parent = PreviewBox
+
+        -- Palet Preset Warna
+        local PresetsHolder = Instance.new("Frame")
+        PresetsHolder.Position = UDim2.new(0, 14, 0, 48)
+        PresetsHolder.Size = UDim2.new(1, -28, 0, 32)
+        PresetsHolder.BackgroundTransparency = 1
+        PresetsHolder.Parent = Frame
+
+        local PLayout = Instance.new("UIListLayout")
+        PLayout.FillDirection = Enum.FillDirection.Horizontal
+        PLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+        PLayout.Padding = UDim.new(0, 8)
+        PLayout.Parent = PresetsHolder
+
+        local presetColors = {
+            Color3.fromRGB(56, 130, 255),  -- Blue
+            Color3.fromRGB(46, 204, 113),  -- Green
+            Color3.fromRGB(241, 196, 15),  -- Yellow
+            Color3.fromRGB(231, 76, 60),   -- Red
+            Color3.fromRGB(155, 89, 182),  -- Purple
+            Color3.fromRGB(255, 255, 255), -- White
+            Color3.fromRGB(26, 26, 26)     -- Dark
+        }
+
+        local function SetColor(col)
+            ColorPicker.Value = col
+            PreviewBox.BackgroundColor3 = col
+            pcall(cb, col)
+        end
+
+        for _, col in ipairs(presetColors) do
+            local dot = Instance.new("TextButton")
+            dot.Size = UDim2.new(0, 26, 0, 26)
+            dot.BackgroundColor3 = col
+            dot.Text = ""
+            dot.AutoButtonColor = false
+            dot.Parent = PresetsHolder
+
+            local dCorner = Instance.new("UICorner")
+            dCorner.CornerRadius = UDim.new(1, 0)
+            dCorner.Parent = dot
+
+            dot.MouseButton1Click:Connect(function()
+                SetColor(col)
+            end)
+        end
+
+        MainBtn.MouseButton1Click:Connect(function()
+            ColorPicker.Open = not ColorPicker.Open
+            Tween(Frame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                Size = ColorPicker.Open and UDim2.new(1, 0, 0, 88) or UDim2.new(1, 0, 0, 44)
+            })
+        end)
+
+        function ColorPicker:Set(col) SetColor(col) end
+        function ColorPicker:Get() return ColorPicker.Value end
+        function ColorPicker:Destroy() Frame:Destroy() end
+
+        if flag and Window.Config then
+            Window.Config:Register(flag, function() return ColorPicker:Get() end, function(v) ColorPicker:Set(v) end)
+        end
+
+        return ColorPicker
+    end
+
+    -- 10. PROGRESS BAR
     function targetScope:CreateProgress(progConfig)
         progConfig = progConfig or {}
         local name = progConfig.Name or "Progress"
@@ -2314,7 +2494,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         return Progress
     end
 
-    -- 10. LABEL
+    -- 11. LABEL
     function targetScope:CreateLabel(labelConfig)
         labelConfig = labelConfig or {}
         local text = labelConfig.Text or "Label"
@@ -2368,7 +2548,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         return Label
     end
 
-    -- 11. PARAGRAPH
+    -- 12. PARAGRAPH
     function targetScope:CreateParagraph(paraConfig)
         paraConfig = paraConfig or {}
         local title = paraConfig.Title or "Title"
@@ -2431,7 +2611,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         return Paragraph
     end
 
-    -- 12. SECTION
+    -- 13. SECTION
     function targetScope:CreateSection(secName)
         secName = secName or "Section"
         local Section = {}
@@ -2452,7 +2632,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         return Section
     end
 
-    -- 13. DIVIDER
+    -- 14. DIVIDER
     function targetScope:CreateDivider()
         local Divider = {}
         local Line = Instance.new("Frame")
@@ -2467,7 +2647,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
         return Divider
     end
 
-    -- Aliases
+    -- Component Aliases
     targetScope.Collapsible = targetScope.CreateCollapsible
     targetScope.Toggle = targetScope.CreateToggle
     targetScope.Button = targetScope.CreateButton
@@ -2476,6 +2656,7 @@ function Akbar:_InjectComponentMethods(targetScope, containerFrame)
     targetScope.Dropdown = targetScope.CreateDropdown
     targetScope.Input = targetScope.CreateInput
     targetScope.Keybind = targetScope.CreateKeybind
+    targetScope.ColorPicker = targetScope.CreateColorPicker
     targetScope.Progress = targetScope.CreateProgress
     targetScope.Label = targetScope.CreateLabel
     targetScope.Paragraph = targetScope.CreateParagraph
