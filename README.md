@@ -1,427 +1,347 @@
 
 # Akbar UI Framework
 
-[![Luau](https://img.shields.io/badge/Language-Luau-00A2FF?style=flat-square)](https://luau-lang.org/)
-[![Version](https://img.shields.io/badge/Version-1.1.2-3882FF?style=flat-square)]()
-[![Tested](https://img.shields.io/badge/Environment-Delta%20%7C%20Codex%20%7C%20Wave%20%7C%20Studio-3882FF?style=flat-square)]()
-[![Platform](https://img.shields.io/badge/Platform-Mobile%20%2F%20PC-1e1e2e?style=flat-square)]()
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+**Modern Dark Glassmorphism UI Library untuk Roblox Luau**
 
-Akbar UI adalah framework antarmuka dark glassmorphism modern untuk Roblox Luau[span_0](start_span)[span_0](end_span)[span_1](start_span)[span_1](end_span). Dirancang dengan performa stabil, tata letak responsif untuk Mobile (layar sentuh) maupun PC (mouse & keyboard), tombol floating fleksibel, dan sistem penyimpanan konfigurasi berbasis JSON[span_2](start_span)[span_2](end_span)[span_3](start_span)[span_3](end_span).
+UI framework ringan, cepat, dan responsif (PC + Mobile) buat script Roblox — dipakai di seluruh proyek King Akbar (Drag Race Simulator, Indo Hangout Hub, Car Driving Indonesia).
 
----
-
-## Daftar Isi
-1. [Panduan Pemasangan Cepat](#panduan-pemasangan-cepat)
-   - [Eksekutor Mobile / PC](#1-eksekutor-mobile--pc-delta-codex-wave-dll)
-   - [Roblox Studio](#2-roblox-studio)
-2. [Konfigurasi Jendela Utama (CreateWindow)](#konfigurasi-jendela-utama-createwindow)
-3. [Manajemen Tab & Grup Menu](#manajemen-tab--grup-menu)
-4. [Dokumentasi Lengkap Komponen](#dokumentasi-lengkap-komponen)
-   - [Toggle](#toggle)
-   - [Button](#button)
-   - [Slider (Touch-Lock)](#slider)
-   - [Stepper](#stepper)
-   - [Dropdown](#dropdown)
-   - [Input Field](#input-field)
-   - [Keybind](#keybind)
-   - [Color Picker](#color-picker)
-   - [Progress Bar](#progress-bar)
-   - [Label & Live Updater](#label)
-   - [Paragraph, Section, & Divider](#elemen-tampilan)
-5. [Notifikasi, Dialog, & Konfirmasi](#notifikasi-dialog--konfirmasi)
-6. [Sistem Simpan Pengaturan (Config Engine)](#sistem-simpan-pengaturan-config-engine)
-7. [Daftar Icon Bawaan](#daftar-icon-bawaan)
-8. [Solusi Masalah Umum (Troubleshooting)](#solusi-masalah-umum-troubleshooting)
+- 🎨 Dark glassmorphism, 7 preset warna siap pakai, custom theme
+- 📱 Full mobile support — drag, resize, semua komponen touch-friendly
+- 🧩 14 komponen siap pakai (Toggle, Slider, Dropdown, Stepper, Progress Bar, dll)
+- 💾 Config save/load otomatis (per-flag, tersimpan sebagai JSON)
+- ⚡ Animasi tactile & glow di tombol Primary
+- 🛡️ Callback dibungkus `pcall` — error di script kamu nggak bikin UI crash total
 
 ---
 
-## Panduan Pemasangan Cepat
+## 📦 Instalasi
 
-### 1. Eksekutor Mobile / PC (Delta, Codex, Wave, dll.)
-Gunakan fungsi `loadstring` dan `game:HttpGet` untuk memuat library langsung dari GitHub[span_4](start_span)[span_4](end_span):
+Load langsung dari GitHub pakai `loadstring`:
 
 ```lua
-local Akbar = loadstring(game:HttpGet("[https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/main/AkbarUI.lua](https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/main/AkbarUI.lua)"))()
+local Akbar = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/refs/heads/main/AkbarUI.lua"
+))()
+```
+
+> ⚠️ **Penting:** semua nama method komponen **tidak pakai prefix "Create"** — jadi `Tab:Section(...)`, bukan `Tab:CreateSection(...)`. Cuma dua method di level atas yang pakai prefix "Create": `Akbar:CreateWindow(...)` dan `Window:CreateTab(...)`.
+
+---
+
+## 🚀 Quick Start
+
+```lua
+local Akbar = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/refs/heads/main/AkbarUI.lua"
+))()
 
 local Window = Akbar:CreateWindow({
     Name = "King Akbar",
-    LoadingSubtitle = "v1.1.2 Mobile Edition",
-    Icon = "crown"
+    LoadingSubtitle = "Auto Farm Suite",
+    Icon = "crown",
+    ToggleUIKeybind = "RightControl",
+    ConfigurationSaving = { Enabled = true, FolderName = "KingAkbar", FileName = "config" },
 })
 
-local Tab = Window:CreateTab({
-    Name = "Beranda",
-    Icon = "home"
-})
+local Tab = Window:CreateTab({ Name = "Utama", Icon = "home" })
 
-Tab:CreateButton({
-    Name = "Tes Tombol",
-    Callback = function()
-        print("UI berjalan dengan lancar!")
-    end
-})
-```
-
-### 2. Roblox Studio
-1. Buat **ModuleScript** baru di dalam `ReplicatedStorage` atau `StarterPlayerScripts`, beri nama `AkbarUI`.
-2. Tempelkan seluruh kode dari `AkbarUI.lua` ke dalam ModuleScript tersebut[span_5](start_span)[span_5](end_span).
-3. Panggil melalui **LocalScript**[span_6](start_span)[span_6](end_span):
-
-```lua
-local Akbar = require(game:GetService("ReplicatedStorage"):WaitForChild("AkbarUI"))
-
-local Window = Akbar:CreateWindow({
-    Name = "Studio Project",
-    Icon = "wrench"
-})
-```
-
----
-
-## Konfigurasi Jendela Utama (CreateWindow)
-
-Fungsi `Akbar:CreateWindow(config)` menerima tabel konfigurasi untuk mengatur ukuran, perilaku, dan animasi awal[span_7](start_span)[span_7](end_span):
-
-```lua
-local Window = Akbar:CreateWindow({
-    Name = "King Akbar",             -- Judul utama di bar navigasi atas[span_8](start_span)[span_8](end_span)
-    LoadingSubtitle = "Mobile Suite",-- Deskripsi subjudul kecil[span_9](start_span)[span_9](end_span)
-    Icon = "crown",                  -- Icon branding utama[span_10](start_span)[span_10](end_span)
-    ToggleUIKeybind = "RightControl",-- Tombol keyboard PC untuk menyembunyikan/menampilkan UI[span_11](start_span)[span_11](end_span)
-    
-    -- Dimensi rekomendasi Mobile: (520, 310) | Dimensi PC: (760, 520)
-    Size = UDim2.fromOffset(520, 310), 
-    MinSize = Vector2.new(420, 260),
-    MaxSize = Vector2.new(1050, 720),
-    
-    KeepOnScreen = true,             -- Menjaga posisi jendela tidak keluar dari layar kamera[span_12](start_span)[span_12](end_span)
-    Accordion = false,               -- Jika true, hanya satu menu lipat yang bisa terbuka dalam satu waktu[span_13](start_span)[span_13](end_span)
-    
-    OpenButton = {                   -- Tombol ikon floating pojok kiri atas[span_14](start_span)[span_14](end_span)
-        Icon = "crown",
-        Position = UDim2.new(0, 16, 0, 16)
-    },
-    
-    Loading = {                      -- Layar splash loading saat script baru dijalankan[span_15](start_span)[span_15](end_span)
-        Enabled = true,
-        Title = "AKBAR UI",
-        Text = "Menyiapkan sistem...",
-        Steps = {
-            "Mengunduh aset",
-            "Membangun antarmuka",
-            "Siap digunakan"
-        },
-        Duration = 1.5
-    },
-    
-    ConfigurationSaving = {          -- Sistem manajemen file pengaturan JSON[span_16](start_span)[span_16](end_span)
-        Enabled = true,
-        FolderName = "AkbarConfigs",  -- Nama folder penyimpanan di direktori workspace[span_17](start_span)[span_17](end_span)
-        FileName = "default"         -- Nama file konfigurasi awal[span_18](start_span)[span_18](end_span)
-    }
-})
-```
-
----
-
-## Manajemen Tab & Grup Menu
-
-### Membuat Tab
-Navigasi diletakkan di sidebar sebelah kiri[span_19](start_span)[span_19](end_span):
-
-```lua
-local TabUtama = Window:CreateTab({
-    Name = "Farming",
-    Desc = "Otomatisasi Panen & Mining",
-    Icon = "sprout"
-})
-```
-
-### Membuat Collapsible Group (Menu Lipat)
-Sangat berguna untuk merapikan fitur agar layar HP tidak penuh dengan scroll panjang[span_20](start_span)[span_20](end_span)[span_21](start_span)[span_21](end_span):
-
-```lua
-local GrupPanen = TabUtama:CreateCollapsible({
-    Name = "Pengaturan Panen Cepat",
-    Desc = "Loop panen otomatis dan jeda waktu",
-    Icon = "bot",
-    Open = true -- Set true agar grup langsung terbuka saat tab dimuat[span_22](start_span)[span_22](end_span)
-})
-```
-
----
-
-## Dokumentasi Lengkap Komponen
-
-Semua elemen di bawah ini dapat dimasukkan ke dalam `Tab` ataupun ke dalam `Collapsible Group`[span_23](start_span)[span_23](end_span).
-
-### Toggle
-Saklar switch on/off dengan area sentuh kartu menyeluruh[span_24](start_span)[span_24](end_span):
-```lua
-local MyToggle = TabUtama:CreateToggle({
-    Name = "Auto Fishing",
-    Desc = "Menangkap ikan otomatis saat umpan ditarik",
-    CurrentValue = false,
-    Flag = "AutoFishFlag", -- Wajib diisi jika statusnya ingin disimpan ke JSON[span_25](start_span)[span_25](end_span)
+Tab:Toggle({
+    Title = "Auto Farm",
+    Desc = "Aktifkan auto farm otomatis",
+    Default = false,
+    Flag = "AutoFarm",
     Callback = function(state)
-        print("Status toggle:", state) -- Bernilai true atau false
-    end
-})
-
--- Kontrol eksternal:
-MyToggle:Set(true)   -- Mengubah status saklar secara manual[span_26](start_span)[span_26](end_span)
-print(MyToggle:Get())-- Mengambil status aktif saklar saat ini[span_27](start_span)[span_27](end_span)
-```
-
-### Button
-Tombol aksi interaktif dengan animasi tekanan tactile[span_28](start_span)[span_28](end_span):
-```lua
-TabUtama:CreateButton({
-    Name = "Klaim Hadiah Harian",
-    Desc = "Menjalankan fungsi penukaran hadiah",
-    Icon = "zap",
-    Style = "Primary", -- Pilihan tampilan: "Default" atau "Primary" (aksen biru)[span_29](start_span)[span_29](end_span)
-    Callback = function()
-        print("Tombol berhasil ditekan!")
-    end
-})
-```
-
-### Slider
-Pengatur angka linear yang dilengkapi fitur pengunci scrolling agar tidak goyang di mobile[span_30](start_span)[span_30](end_span):
-```lua
-local MySlider = TabUtama:CreateSlider({
-    Name = "Kecepatan Pemain (WalkSpeed)",
-    Desc = "Mengatur batas kecepatan langkah karakter",
-    Range = {16, 200},        -- Batas minimum dan maksimum[span_31](start_span)[span_31](end_span)
-    Increment = 1,            -- Nilai interval pergeseran[span_32](start_span)[span_32](end_span)
-    CurrentValue = 16,        -- Nilai default awal[span_33](start_span)[span_33](end_span)
-    Suffix = " spd",          -- Satuan teks di samping kanan angka[span_34](start_span)[span_34](end_span)
-    Flag = "WalkSpeedFlag",   -- Flag konfigurasi JSON[span_35](start_span)[span_35](end_span)
-    Callback = function(val)
-        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = val
-    end
-})
-
-MySlider:Set(50) -- Memperbarui nilai slider lewat script[span_36](start_span)[span_36](end_span)
-```
-
-### Stepper
-Pengatur angka presisi menggunakan tombol minus (`-`) dan plus (`+`)[span_37](start_span)[span_37](end_span):
-```lua
-TabUtama:CreateStepper({
-    Name = "Radius Deteksi Target",
-    Range = {5, 100},
-    Increment = 5,
-    CurrentValue = 25,
-    Flag = "RadiusFlag",
-    Callback = function(val)
-        print("Radius saat ini:", val)
-    end
-})
-```
-
-### Dropdown
-Menu pilihan yang mendukung mode pemilihan tunggal maupun banyak opsi sekaligus[span_38](start_span)[span_38](end_span):
-```lua
-local MyDropdown = TabUtama:CreateDropdown({
-    Name = "Sasaran Monster",
-    Options = {"Goblin", "Bandit", "Lava Golem", "Dragon"},
-    CurrentOption = "Goblin",
-    MultipleOptions = false, -- Ganti true jika ingin bisa memilih lebih dari satu opsi[span_39](start_span)[span_39](end_span)
-    Flag = "MonsterTargetFlag",
-    Callback = function(selected)
-        print("Opsi terpilih:", selected)
-    end
-})
-
--- Memperbarui daftar opsi saat runtime:
-MyDropdown:Refresh({"NPC Baru A", "NPC Baru B"})[span_40](start_span)[span_40](end_span)
-```
-
-### Input Field
-Kolom pengetikan teks atau angka dari pemain[span_41](start_span)[span_41](end_span):
-```lua
-TabUtama:CreateInput({
-    Name = "Target Teleportasi",
-    PlaceholderText = "Ketik username...",
-    Numeric = false, -- Ubah true jika input hanya boleh menerima karakter angka[span_42](start_span)[span_42](end_span)
-    Flag = "TargetNameFlag",
-    Callback = function(text, enterPressed)
-        print("Teks:", text, "| Ditekan Enter:", enterPressed)
-    end
-})
-```
-
-### Keybind
-Perekam shortcut keyboard (kompatibel PC)[span_43](start_span)[span_43](end_span):
-```lua
-TabUtama:CreateKeybind({
-    Name = "Tombol Teleportasi Cepat",
-    CurrentKeybind = "E",
-    Flag = "QuickTeleportKey",
-    Callback = function(keyName)
-        print("Tombol dipicu:", keyName)
+        print("Auto Farm:", state)
     end,
-    OnChanged = function(newKey)
-        print("Keybind berhasil diubah ke:", newKey)
-    end
-})
-```
-
-### Color Picker
-Palet warna dinamis lengkap dengan preset warna instan[span_44](start_span)[span_44](end_span):
-```lua
-TabUtama:CreateColorPicker({
-    Name = "Warna ESP Visual",
-    Default = Color3.fromRGB(56, 130, 255),
-    Flag = "VisualColorFlag",
-    Callback = function(col)
-        print("Warna terpilih:", col)
-    end
-})
-```
-
-### Progress Bar
-Indikator visual kemajuan (rentang 0.0 hingga 1.0)[span_45](start_span)[span_45](end_span):
-```lua
-local MyBar = TabUtama:CreateProgress({
-    Name = "Kapasitas Ransel",
-    CurrentValue = 0.5, -- 50%[span_46](start_span)[span_46](end_span)
-    Format = function(val)
-        return math.floor(val * 100) .. "% Penuh[span_47](start_span)"[span_47](end_span)
-    end
 })
 
-MyBar:Set(0.85) -- Mengubah progress bar menjadi 85%[span_48](start_span)[span_48](end_span)
-```
-
-### Label
-Menampilkan teks informasi biasa atau teks dinamis yang diperbarui otomatis berdasarkan interval waktu[span_49](start_span)[span_49](end_span):
-```lua
--- Label statis:
-local Status = TabUtama:CreateLabel({
-    Text = "Status: Idle"
-})
-Status:Set("Status: Sedang Berjalan")[span_50](start_span)[span_50](end_span)
-
--- Live Dynamic Label:
-TabUtama:CreateLabel({
-    Text = "Pemain Online: Menghitung...",
-    UpdateRate = 2, -- Diperbarui setiap 2 detik[span_51](start_span)[span_51](end_span)[span_52](start_span)[span_52](end_span)
-    Update = function()
-        return "Pemain Online: " .. #game:GetService("Players"):GetPlayers()[span_53](start_span)[span_53](end_span)[span_54](start_span)[span_54](end_span)
-    end
-})
-```
-
-### Elemen Tampilan
-```lua
-TabUtama:CreateSection("Kategori Tambahan") -- Teks penanda kategori berwarna aksen[span_55](start_span)[span_55](end_span)
-TabUtama:CreateDivider()                     -- Garis pembatas horizontal tipis[span_56](start_span)[span_56](end_span)
-
-TabUtama:CreateParagraph({                   -- Kotak ringkasan penjelasan panjang[span_57](start_span)[span_57](end_span)
-    Title = "Petunjuk Penggunaan",
-    Content = "Pastikan fitur dieksekusi di zona yang aman agar proses loop berjalan lancar tanpa kendala lag."
+Tab:Button({
+    Title = "Simpan Pengaturan",
+    Primary = true,
+    Callback = function()
+        Window:SaveConfig()
+    end,
 })
 ```
 
 ---
 
-## Notifikasi, Dialog, & Konfirmasi
+## 📖 Referensi API
 
-### Notifikasi Melayang
-Muncul di pojok kanan bawah dengan durasi progress bar otomatis[span_58](start_span)[span_58](end_span):
+### `Akbar:CreateWindow(config)`
+
+Bikin window utama. Balikin objek `Window`.
+
+| Field | Tipe | Default | Keterangan |
+|---|---|---|---|
+| `Name` | string | `"King Akbar"` | Judul window |
+| `LoadingSubtitle` / `Subtitle` | string | `"King Akbar"` | Subjudul di header |
+| `Icon` | string | `"crown"` | Nama ikon bawaan atau `rbxassetid://...` |
+| `ToggleUIKeybind` / `ToggleKey` | string/EnumItem | `"RightControl"` | Tombol buat show/hide window |
+| `Size` | UDim2 | `760x520` | Ukuran awal window |
+| `MinSize` / `MaxSize` | Vector2 | `480x360` / `1100x750` | Batas resize |
+| `MaxNotifications` | number | `5` | Maksimal notifikasi numpuk sekaligus |
+| `KeepOnScreen` | bool | `true` | Cegah window ke-drag keluar layar |
+| `Accordion` | bool | `false` | Kalau `true`, buka 1 section otomatis nutup section lain |
+| `SearchEnabled` | bool | `true` | Tampilkan search box buat filter tab |
+| `OpenButton` | table/false | `{}` | Tombol melayang buat toggle window. `false` buat matiin. Isi: `{ Icon, Position }` |
+| `Loading` | table | — | `{ Enabled, Title, Text, Steps = {...}, Duration }` — layar loading di awal |
+| `ConfigurationSaving` | table | — | `{ Enabled, FolderName, FileName }` |
+| `DisplayOrder` | number | `100` | ZIndex ScreenGui |
+| `Parent` | Instance | CoreGui/gethui | Parent custom buat ScreenGui |
+| `CloseBehavior` | string | — | `"Destroy"` biar tombol close langsung hancurin window (default cuma sembunyiin) |
+
+### Metode `Window`
+
+| Metode | Keterangan |
+|---|---|
+| `Window:Toggle()` | Show/hide window |
+| `Window:Center()` | Pindahin window ke tengah layar |
+| `Window:SetSize(UDim2)` / `Window:GetSize()` | Atur/ambil ukuran |
+| `Window:SetMinSize(Vector2)` / `Window:SetMaxSize(Vector2)` | Batas resize |
+| `Window:SetTitle(text)` / `Window:SetSubtitle(text)` | Ganti judul/subjudul |
+| `Window:SetIcon(iconAsset)` | Ganti ikon header |
+| `Window:SetToggleKey(key)` | Ganti keybind toggle |
+| `Window:SetAccordion(bool)` | Ganti mode accordion section |
+| `Window:SetSearchEnabled(bool)` | Nyalain/matiin search box |
+| `Window:SaveConfig(name?)` / `Window:LoadConfig(name?)` | Simpan/muat config (default file: `default`) |
+| `Window:DeleteConfig(name?)` / `Window:ListConfigs()` | Hapus/list config tersimpan |
+| `Window:Notify(data)` | Tampilkan notifikasi melayang |
+| `Window:Confirm(data)` | Modal konfirmasi (Ya/Batal) |
+| `Window:Dialog(data)` | Modal custom dengan tombol bebas |
+| `Window:CreateTab(config)` | Bikin tab baru |
+| `Window:SelectTab(tab / nama / index)` | Pindah ke tab tertentu |
+| `Window:Destroy()` | Hancurin window & lepas semua koneksi |
+
+---
+
+### `Window:CreateTab(config)`
+
 ```lua
-Window:Notify({
-    Title = "King Akbar",
-    Content = "Perubahan konfigurasi berhasil disimpan!",
-    Duration = 3.5, -- Durasi tampil dalam detik[span_59](start_span)[span_59](end_span)
-    Icon = "check"  -- Icon notifikasi[span_60](start_span)[span_60](end_span)
+local Tab = Window:CreateTab({ Name = "Farming", Desc = "Fitur auto farm", Icon = "sprout" })
+```
+
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `Name` | string | Nama tab (wajib) |
+| `Desc` / `Description` | string | Subjudul di header konten |
+| `Icon` | string | Nama ikon bawaan atau asset id |
+
+Bisa juga dipanggil singkat: `Window:CreateTab("Farming", "sprout")`.
+
+Setiap `Tab` (dan setiap `Section`, lihat di bawah) punya method yang sama buat bikin komponen:
+
+---
+
+### Komponen
+
+Semua contoh di bawah pakai `Tab:...`, tapi persis sama kalau dipanggil dari dalam `Section:...`.
+
+#### `Tab:Section(config)` — Grup collapsible
+
+```lua
+local Sec = Tab:Section({ Title = "Pengaturan Lanjutan", Open = true })
+Sec:Toggle({ Title = "Contoh di dalam section", Callback = function(v) end })
+```
+| Field | Tipe | Default |
+|---|---|---|
+| `Title` | string | `"Section"` |
+| `Open` | bool | `true` |
+
+Balikan: `Section:Collapse()`, `Section:Expand()`, `Section:SetExpanded(bool)`, plus semua method komponen (nested).
+
+#### `Tab:Toggle(config)`
+
+```lua
+Tab:Toggle({
+    Title = "Auto Farm", Desc = "Deskripsi opsional",
+    Default = false, Flag = "AutoFarm",
+    Callback = function(value) end,
+})
+```
+Balikan: `{ Value, Set(value, silent), Get() }`
+
+#### `Tab:Slider(config)`
+
+```lua
+Tab:Slider({
+    Title = "Jarak Farm", Min = 0, Max = 100, Default = 50,
+    Precision = 0, Step = nil, Suffix = " studs", Flag = "FarmRange",
+    Callback = function(value) end,
+})
+```
+Balikan: `{ Value, Set(value, silent), Get() }`
+
+#### `Tab:Dropdown(config)`
+
+```lua
+-- Single select
+Tab:Dropdown({ Title = "Pilih Map", Options = {"Map A","Map B"}, Default = "Map A", Callback = function(v) end })
+
+-- Multi select
+Tab:Dropdown({ Title = "Pilih Item", Options = {"A","B","C"}, Multi = true, Default = {"A"}, Callback = function(v) end })
+```
+Balikan: `{ Value, Set(v, silent), Get(), Refresh(newOptions, keepSelection) }`
+
+#### `Tab:Button(config)`
+
+```lua
+Tab:Button({ Title = "Jalankan", Primary = true, Height = 40, Callback = function() end })
+```
+`Primary = true` kasih warna accent + glow tipis. Balikan: `{ Instance, Set(text) }`
+
+#### `Tab:Label(config)` & `Tab:Paragraph(config)`
+
+```lua
+Tab:Label({ Title = "Teks statis singkat" })
+Tab:Paragraph({ Title = "Judul", Desc = "Teks panjang di bawah judul." })
+```
+
+#### `Tab:Divider()`
+
+Garis pemisah tipis, tanpa parameter.
+
+#### `Tab:Keybind(config)`
+
+```lua
+Tab:Keybind({
+    Title = "Toggle Farm", Default = "E", Flag = "FarmKey",
+    Callback = function(keyName) end,     -- dipanggil pas keybind ditekan
+    OnChanged = function(newKey) end,     -- dipanggil pas keybind diganti
 })
 ```
 
-### Modal Konfirmasi (Yes / No)
-Memblokir aksi berbahaya sampai dikonfirmasi pengguna[span_61](start_span)[span_61](end_span):
+#### `Tab:ColorPicker(config)`
+
 ```lua
+Tab:ColorPicker({ Title = "Warna ESP", Default = Color3.fromRGB(255,0,0), Callback = function(color) end })
+```
+
+#### `Tab:Input(config)`
+
+```lua
+Tab:Input({
+    Title = "Nickname", Placeholder = "Ketik di sini...",
+    Callback = function(text, enterPressed) end,
+})
+```
+
+#### `Tab:Stepper(config)`
+
+```lua
+Tab:Stepper({
+    Title = "Jumlah Loop", Range = {1, 10}, Increment = 1, CurrentValue = 1,
+    Callback = function(value) end,
+})
+```
+Balikan: `{ Value, Set(v, silent), Get() }`
+
+#### `Tab:Progress(config)`
+
+```lua
+local Bar = Tab:Progress({ Title = "Progress Upgrade", CurrentValue = 0.4, Format = function(v) return math.floor(v*100).."%" end })
+Bar:Set(0.7) -- update progress kapan saja
+```
+Balikan: `{ Value, Set(v) }`
+
+#### `Tab:Tooltip(config)`
+
+```lua
+Tab:Tooltip({ Title = "Apa itu Flag?", Text = "Penjelasan panjang di sini, bisa diklik buka-tutup." })
+```
+Balikan: `{ Expand(), Collapse() }`
+
+---
+
+### Notifikasi & Modal
+
+```lua
+Window:Notify({ Title = "Berhasil", Content = "Auto farm diaktifkan.", Duration = 3, Icon = "check", Type = "success" })
+-- Type: "success" | "warning" | "error" | nil (info/default)
+
 Window:Confirm({
-    Title = "Reset Data",
-    Content = "Apakah kamu yakin ingin menghapus file konfigurasi ini?",
-    ConfirmText = "Ya, Hapus",
-    CancelText = "Batal",
-    Callback = function(confirmed)
-        if confirmed then
-            print("Pengguna menekan Konfirmasi.")
-        else
-            print("Pengguna membatalkan aksi.")
-        end
-    end
+    Title = "Yakin?", Content = "Reset semua pengaturan?",
+    ConfirmText = "Ya", CancelText = "Batal",
+    Callback = function(confirmed) end,
+})
+
+Window:Dialog({
+    Title = "Pilih Aksi", Content = "Mau ngapain?",
+    Buttons = {
+        { Name = "Simpan", Primary = true, Callback = function() end },
+        { Name = "Batal", Callback = function() end },
+    },
 })
 ```
 
 ---
 
-## Sistem Simpan Pengaturan (Config Engine)
+### Config Save/Load
 
-Semua komponen yang memiliki parameter `Flag` otomatis terhubung dengan modul JSON terintegrasi[span_62](start_span)[span_62](end_span). File akan tersimpan ke folder eksekutor kamu (`writefile` / `readfile`)[span_63](start_span)[span_63](end_span):
+Setiap komponen yang punya `Flag = "NamaUnik"` otomatis kedaftar ke sistem config. Nilainya (termasuk `Color3` dan `EnumItem`/Keybind) disimpan sebagai JSON di `writefile` (fallback ke `_G` kalau executor nggak dukung file system).
 
 ```lua
--- Menyimpan state komponen saat ini ke file 'profil1.json'
-Window:SaveConfig("profil1")[span_64](start_span)[span_64](end_span)
-
--- Memuat kembali data yang tersimpan dari 'profil1.json'
-Window:LoadConfig("profil1")[span_65](start_span)[span_65](end_span)
-
--- Menghapus file 'profil1.json'
-Window:DeleteConfig("profil1")[span_66](start_span)[span_66](end_span)
-
--- Mendapatkan array daftar semua nama file konfigurasi yang ada di folder
-local list = Window:ListConfigs()[span_67](start_span)[span_67](end_span)
-print("File tersedia:", table.concat(list, ", "))
+Window:SaveConfig("profil1")   -- simpan
+Window:LoadConfig("profil1")   -- muat lagi (dipanggil kapan saja, misal pas script start)
+Window:ListConfigs()           -- {"profil1", "default", ...}
+Window:DeleteConfig("profil1")
 ```
 
 ---
 
-## Daftar Icon Bawaan
+### Tema & Preset Warna
 
-Framework menyediakan pustaka ikon siap pakai tanpa perlu mencari URL gambar eksternal[span_68](start_span)[span_68](end_span):
+```lua
+Akbar:SetPreset("Royal Purple")   -- ganti accent color instan, live ke semua elemen
+Akbar:ListPresets()               -- daftar semua nama preset
 
-| Nama Icon | Fungsi / Tema | Nama Icon | Fungsi / Tema |
-| :--- | :--- | :--- | :--- |
-| `crown` | Mahkota / Brand Utama | `fish` | Memancing |
-| `anchor` | Jangkar / Tab Umum | `pickaxe` | Menambang / Mining |
-| `bot` | Otomatisasi / Bot Farm | `sprout` | Pertanian / Farming |
-| `zap` | Kilat / Aksi Cepat | `shield` | Proteksi / Pertahanan |
-| `wrench` | Peralatan / Perkakas | `refresh-cw`| Reset / Sinkronisasi Ulang |
-| `settings` | Pengaturan Menu | `search` | Kolom Pencarian |
-| `home` | Halaman Awal | `info` | Petunjuk / Info Sistem |
-| `user` | Profil Tunggal | `users` | Multi-pemain |
-| `check` | Simbol Sukses / Simpan | `x` | Tombol Tutup |
-| `minus` | Perkecil / Minimize | `maximize` | Perbesar / Fullscreen |
-| `palette` | Palet Warna / Tema | `chevron-down` | Panah Lipat Bawah |
+Akbar:SetAccentColor(Color3.fromRGB(255, 200, 0))  -- warna custom bebas
+
+Akbar:SetTheme({ Background = Color3.fromRGB(10,10,15) })  -- override field tema manapun
+
+Akbar:SetAnimations(false)  -- matiin semua tween (instan, buat device low-end)
+```
+
+**Preset bawaan:** `Default Blue`, `Royal Purple`, `Crimson Red`, `Emerald Green`, `Sunset Orange`, `Ocean Teal`, `Midnight Pink`.
 
 ---
 
-## Solusi Masalah Umum (Troubleshooting)
+### Ikon Bawaan
 
-### 1. Tombol atau Switch Toggle Tidak Bisa Dipencet di HP
-* **Penyebab:** Versi UI lama menggunakan event `.MouseButton1Click` yang sering tertelan oleh gestur sentuhan pada `ScrollingFrame`[span_69](start_span)[span_69](end_span).
-* **Solusi:** Gunakan file `AkbarUI.lua` versi terbaru (v1.1.2) yang sudah diperbarui dengan event `.Activated` dan pembungkus hitbox tombol penuh[span_70](start_span)[span_70](end_span).
+`crown`, `anchor`, `fish`, `pickaxe`, `bot`, `sprout`, `settings`, `home`, `info`, `user`, `users`, `zap`, `shield`, `wrench`, `refresh-cw`, `layout-dashboard`, `scroll-text`, `search`, `x`, `minus`, `maximize`, `chevron-down`, `chevron-up`, `check`, `save`, `palette`.
 
-### 2. Error Merah: `attempt to index nil with 'WaitForChild'`
-* **Penyebab:** Menggunakan `require(script.Parent...)` di dalam eksekutor Roblox[span_71](start_span)[span_71](end_span). Variabel `script` di eksekutor bernilai `nil`[span_72](start_span)[span_72](end_span).
-* **Solusi:** Gunakan metode pemanggilan `loadstring(game:HttpGet(...))` resmi dari GitHub[span_73](start_span)[span_73](end_span)[span_74](start_span)[span_74](end_span).
-
-### 3. Tampilan Halaman Kosong / Fitur Tidak Terlihat
-* **Penyebab:** Fitur ditaruh di dalam `Collapsible Group` yang disetel `Open = false`[span_75](start_span)[span_75](end_span).
-* **Solusi:** Klik judul menu lipat tersebut untuk membukanya, atau ubah konfigurasi menjadi `Open = true` pada skrip kamu[span_76](start_span)[span_76](end_span).
-
-### 4. Tombol Ikon Floating Tidak Sengaja Terpencet Saat Menggeser Layar
-* **Solusi:** Tombol floating dilengkapi threshold toleransi gerak seret[span_77](start_span)[span_77](end_span). Sentuh dan seret ikon ke area layar yang kosong agar tidak menghalangi kendali joystick game.
+Bisa juga langsung pakai `rbxassetid://...` atau URL gambar buat ikon custom.
 
 ---
 
-## Lisensi
+## 🩹 Troubleshooting
 
-Proyek ini berada di bawah naungan Lisensi **MIT**[span_78](start_span)[span_78](end_span). Kamu memiliki kebebasan penuh untuk menggunakan, mengadaptasi, serta memodifikasi kode untuk proyek skrip pribadi maupun publik[span_79](start_span)[span_79](end_span).
+| Gejala | Penyebab Umum |
+|---|---|
+| Method error `attempt to call a nil value` | Salah nama method — cek nggak pakai prefix `Create` (kecuali `CreateWindow`/`CreateTab`) |
+| Komponen di dalam Section nggak bisa diklik | Pastikan pakai versi terbaru — bug overlap Header/Section sudah diperbaiki di v2.0.1 |
+| Config nggak kesimpen | Pastikan tiap komponen punya `Flag` unik, dan executor mendukung `writefile`/`readfile` |
+| Warna nggak berubah abis `SetTheme`/`SetPreset` | Pastikan komponen dibuat pakai fungsi `Themed()` bawaan (semua komponen resmi sudah otomatis) |
+
+---
+
+## 📝 Changelog
+
+**v2.0.1**
+- Fix: elemen di dalam `Section` (collapsible) saling tumpang tindih dengan header-nya
+- Fix: instance tombol sidebar tab ketiban method `:Button()` sehingga tab kedua dst. gagal dibuat
+- Fix: callback `Button` dibungkus `pcall` biar error di script user nggak menghentikan seluruh UI
+- Baru: komponen `Stepper`, `Progress`, `Tooltip`
+- Baru: 7 preset warna via `Akbar:SetPreset()`
+- Baru: animasi tactile (`PressFeedback`) & glow di tombol Primary
+
+**v2.0.0**
+- Rilis awal: Window, Tab, Section, Toggle, Slider, Dropdown, Button, Label, Paragraph, Divider, Keybind, ColorPicker, Input, Notify, Confirm, Dialog, Config Save/Load, Live Theme
+
+---
+
+## 📄 Lisensi
+
+Dibuat oleh **King Akbar**. Bebas dipakai untuk proyek pribadi maupun publik — mohon cantumkan credit kalau di-redistribute.
+
+- Instagram: [@akbaritusiapa](https://www.instagram.com/akbaritusiapa)
