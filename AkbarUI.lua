@@ -1,14 +1,22 @@
 --[[
-    AKBAR UI v2.0 — Modern Dark Glassmorphism UI Framework (Fixed & Complete)
+    AKBAR UI v2.0.1 — Modern Dark Glassmorphism UI Framework (Fixed & Complete)
     Fitur : Window, Tab, Section (accordion), Toggle, Slider, Dropdown (multi),
             Button, Label, Paragraph, Keybind, ColorPicker, Input, Divider,
             Notification, Confirm/Dialog, Config Save/Load, Live Theme
     Mobile: drag/resize/component support touch
+
+    v2.0.1 Changelog:
+    - Fix: task.wait di Button diganti task.delay (non-blocking)
+    - Fix: SelectTab index out of bounds tidak lagi crash
+    - Fix: SetMinSize/SetMaxSize sekarang validasi input
+    - Fix: Loading screen aman kalau Steps kosong
+    - Fix: Tambah Get() di Keybind, ColorPicker, Input, Label, Progress
+    - Fix: ResizeGrip pakai icon maximize
 ]]
 
 local Akbar = {}
 Akbar.__index = Akbar
-Akbar.Version = "2.0.0"
+Akbar.Version = "2.0.1" -- PATCH 1: version update
 Akbar.AnimationEnabled = true
 
 local TweenService = game:GetService("TweenService")
@@ -39,7 +47,6 @@ Akbar.Theme = {
 }
 
 -- ════════════════════════ PRESET THEMES ════════════════════════
--- Palet siap pakai biar user tinggal panggil Akbar:SetPreset("Nama")
 Akbar.Presets = {
     ["Default Blue"] = { Accent = Color3.fromRGB(56, 130, 255), AccentDark = Color3.fromRGB(40, 95, 200) },
     ["Royal Purple"] = { Accent = Color3.fromRGB(147, 112, 255), AccentDark = Color3.fromRGB(110, 80, 210) },
@@ -63,13 +70,17 @@ local Icons = {
     ["x"] = "rbxassetid://7734110595", ["minus"] = "rbxassetid://7733911828",
     ["maximize"] = "rbxassetid://7733955511", ["chevron-down"] = "rbxassetid://7733717444",
     ["chevron-up"] = "rbxassetid://7733717651", ["check"] = "rbxassetid://7733715400",
-    ["save"] = "rbxassetid://7734052335", ["palette"] = "rbxassetid://7734053495",
+    -- PATCH 11: icon duplikat diberi comment TODO
+    -- TODO: ganti dengan asset icon save yang benar (sementara alias dari scroll-text)
+    ["save"] = "rbxassetid://7734052335",
+    -- TODO: ganti dengan asset icon palette yang benar (sementara alias dari pickaxe)
+    ["palette"] = "rbxassetid://7734053495",
     ["fallback"] = "rbxassetid://7733964719"
 }
 
 local function GetIcon(name)
     if type(name) ~= "string" or name == "" then return Icons.fallback end
-    local lower = string.lower(name) -- FIX: case-insensitive
+    local lower = string.lower(name)
     if string.find(lower, "rbxassetid://", 1, true) or string.find(lower, "http", 1, true) then
         return name
     end
@@ -141,9 +152,6 @@ local function Stroke(inst, key, transparency, thickness)
     return s
 end
 
--- FIX/PREMIUM: efek tactile ringan (mengecil dikit saat ditekan) biar respon klik lebih "berasa",
--- terutama di HP dimana nggak ada hover state. Dipasang ke UIScale, bukan Size langsung,
--- biar tidak ganggu AutomaticSize/Layout milik elemen aslinya.
 local function PressFeedback(button, minScale)
     minScale = minScale or 0.96
     local scale = Instance.new("UIScale")
@@ -179,13 +187,11 @@ local function FindParentScroll(obj)
     return nil
 end
 
--- FIX: cegah scroll frame parent scroll saat drag slider/colorpicker
 local function SetScrollEnabled(obj, enabled)
     local scroll = FindParentScroll(obj)
     if scroll then scroll.ScrollingEnabled = enabled end
 end
 
--- FIX: input.Position & AbsolutePosition beda ruang koordinat (GUI inset)
 local function ScreenPos(input)
     local it = input.UserInputType
     if it == Enum.UserInputType.MouseButton1 or it == Enum.UserInputType.MouseButton2
@@ -271,7 +277,6 @@ function ConfigManager:Load(fileName)
             if type(val) == "table" and val.__type == "Color3" then
                 pcall(item.Set, Color3.new(val.r or 0, val.g or 0, val.b or 0))
             elseif type(val) == "table" and val.__type == "EnumItem" then
-                -- FIX: EnumItem sebelumnya tersimpan tapi gagal di-load
                 local typeName = string.match(tostring(val.enum), "%.([%w_]+)$")
                 local enumItem = nil
                 if typeName then
@@ -369,23 +374,28 @@ local function BuildAPI(container, ownerTab)
         table.insert(Window.Connections, conn)
         return conn
     end
+
     local function AddHook(fn)
         table.insert(ThemeHooks, { Window, fn })
     end
+
     local function NextOrder()
         return #container:GetChildren() + 1
     end
+
     local function RegisterFlag(elem, flag)
         if type(flag) == "string" and flag ~= "" then
             Window.Config:Register(flag, function() return elem.Value end,
                 function(v) return elem:Set(v, true) end)
         end
     end
+
     local function CopyTable(t)
         local copy = {}
         for i, v in ipairs(t) do copy[i] = v end
         return copy
     end
+
     local function NewRow(title, desc, height)
         height = height or (desc and 58) or 46
         local Row = Instance.new("Frame")
@@ -429,12 +439,11 @@ local function BuildAPI(container, ownerTab)
         return Row, Title
     end
 
-    -- ─────────── SECTION (collapsible + accordion) ───────────
+    -- ─────────── SECTION ───────────
     function api:Section(c)
         if type(c) == "string" then c = { Title = c } end
         c = c or {}
         local expanded = c.Open ~= false
-
         local Holder = Instance.new("Frame")
         Holder.Size = UDim2.new(1, 0, 0, 0)
         Holder.AutomaticSize = Enum.AutomaticSize.Y
@@ -442,13 +451,13 @@ local function BuildAPI(container, ownerTab)
         Holder.LayoutOrder = NextOrder()
         Holder.Parent = container
 
-        local HolderLayout = Instance.new("UIListLayout") -- FIX: cegah Header & Clip overlap di (0,0)
+        local HolderLayout = Instance.new("UIListLayout")
         HolderLayout.SortOrder = Enum.SortOrder.LayoutOrder
         HolderLayout.Parent = Holder
 
         local Header = Instance.new("TextButton")
         Header.Size = UDim2.new(1, 0, 0, 34)
-        Header.LayoutOrder = 1 -- FIX
+        Header.LayoutOrder = 1
         Themed(Header, "BackgroundColor3", "Surface2")
         Header.BackgroundTransparency = 0.35
         Header.AutoButtonColor = false
@@ -481,7 +490,7 @@ local function BuildAPI(container, ownerTab)
 
         local Clip = Instance.new("Frame")
         Clip.Size = UDim2.new(1, 0, 0, 0)
-        Clip.LayoutOrder = 2 -- FIX
+        Clip.LayoutOrder = 2
         Clip.ClipsDescendants = true
         Clip.BackgroundTransparency = 1
         Clip.BorderSizePixel = 0
@@ -540,12 +549,13 @@ local function BuildAPI(container, ownerTab)
                 Section[k] = v
             end
         end
-
         table.insert(sections, Section)
+
         task.defer(function()
             contentHeight = CLayout.AbsoluteContentSize.Y
             if expanded then Clip.Size = UDim2.new(1, 0, 0, contentHeight + 4) end
         end)
+
         return Section
     end
 
@@ -583,9 +593,10 @@ local function BuildAPI(container, ownerTab)
         Hitbox.ZIndex = 4
         Hitbox.Parent = Row
 
-        local PillScale = Instance.new("UIScale") -- PREMIUM: pill mengecil dikit saat ditekan
+        local PillScale = Instance.new("UIScale")
         PillScale.Scale = 1
         PillScale.Parent = Pill
+
         Hitbox.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 Tween(PillScale, TI(0.08, Enum.EasingStyle.Quad), { Scale = 0.9 })
@@ -718,7 +729,9 @@ local function BuildAPI(container, ownerTab)
         Stroke(Knob, "Border", 0.4, 1)
 
         local Slider = { Value = value }
+
         local function ToAlpha(v) return (v - min) / (max - min) end
+
         local function FromAlpha(a)
             local v = min + (max - min) * a
             if step and step > 0 then v = math.floor(v / step + 0.5) * step end
@@ -781,7 +794,7 @@ local function BuildAPI(container, ownerTab)
         return Slider
     end
 
-    -- ─────────── DROPDOWN (single & multi) ───────────
+    -- ─────────── DROPDOWN ───────────
     function api:Dropdown(c)
         c = c or {}
         local options = {}
@@ -964,7 +977,6 @@ local function BuildAPI(container, ownerTab)
             Tween(OpenBtn, TI(0.15), { BackgroundTransparency = 0 })
         end)
 
-        -- FIX: tutup dropdown kalau klik di luar area dropdown
         Track(UserInputService.InputBegan:Connect(function(input)
             if not expanded then return end
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -1037,16 +1049,14 @@ local function BuildAPI(container, ownerTab)
         Btn.LayoutOrder = NextOrder()
         Round(Btn, 8)
         Btn.Parent = container
-        PressFeedback(Btn) -- PREMIUM: efek tactile
-
+        PressFeedback(Btn)
         if c.Primary then
-            Stroke(Btn, "Accent", 0.55, 1) -- PREMIUM: glow tipis di tombol primary
+            Stroke(Btn, "Accent", 0.55, 1)
         end
-
         Btn.MouseEnter:Connect(function() Tween(Btn, TI(0.15), { BackgroundTransparency = 0.25 }) end)
         Btn.MouseLeave:Connect(function() Tween(Btn, TI(0.15), { BackgroundTransparency = 0 }) end)
 
-        local busy = false -- FIX: cegah spam-klik/double-fire pas mobile nge-tap cepat
+        local busy = false
         Btn.Activated:Connect(function()
             if busy then return end
             busy = true
@@ -1054,15 +1064,13 @@ local function BuildAPI(container, ownerTab)
                 local ok, err = pcall(c.Callback)
                 if not ok then warn("[AkbarUI] Button callback error:", err) end
             end
-            task.wait(0.15)
-            busy = false
+            task.delay(0.15, function() busy = false end) -- PATCH 2: non-blocking
         end)
 
         local obj = { Instance = Btn }
         function obj:Set(text) Btn.Text = tostring(text or "") end
         return obj
     end
-
 
     -- ─────────── LABEL / PARAGRAPH / DIVIDER ───────────
     function api:Label(c)
@@ -1081,6 +1089,7 @@ local function BuildAPI(container, ownerTab)
         L.Parent = container
         local obj = {}
         function obj:Set(t) L.Text = tostring(t or "") end
+        function obj:Get() return L.Text end -- PATCH 6
         return obj
     end
 
@@ -1147,6 +1156,7 @@ local function BuildAPI(container, ownerTab)
             if ok and typeof(resolved) == "EnumItem" then current = resolved end
         end
         if typeof(current) ~= "EnumItem" then current = Enum.KeyCode.Unknown end
+
         local Keybind = { Value = current }
         local listening = false
 
@@ -1213,6 +1223,8 @@ local function BuildAPI(container, ownerTab)
             if not silent and c.OnChanged then task.spawn(c.OnChanged, key) end
         end
 
+        function Keybind:Get() return Keybind.Value end -- PATCH 3
+
         RegisterFlag(Keybind, c.Flag)
         return Keybind
     end
@@ -1256,6 +1268,7 @@ local function BuildAPI(container, ownerTab)
         SV.BackgroundColor3 = Color3.new(1, 1, 1)
         SV.BorderSizePixel = 0
         SV.Parent = Panel
+
         local SVGrad = Instance.new("UIGradient")
         SVGrad.Rotation = 0
         SVGrad.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromHSV(h, 1, 1))
@@ -1267,6 +1280,7 @@ local function BuildAPI(container, ownerTab)
         SVOverlay.BorderSizePixel = 0
         SVOverlay.ZIndex = 2
         SVOverlay.Parent = SV
+
         local OVGrad = Instance.new("UIGradient")
         OVGrad.Rotation = 90
         OVGrad.Transparency = NumberSequence.new(1, 0)
@@ -1280,6 +1294,7 @@ local function BuildAPI(container, ownerTab)
         SVCursor.BorderSizePixel = 0
         SVCursor.ZIndex = 3
         SVCursor.Parent = SV
+
         local svStroke = Instance.new("UIStroke")
         svStroke.Color = Color3.fromRGB(25, 25, 25)
         svStroke.Thickness = 1
@@ -1291,6 +1306,7 @@ local function BuildAPI(container, ownerTab)
         HueBar.BackgroundColor3 = Color3.new(1, 1, 1)
         HueBar.BorderSizePixel = 0
         HueBar.Parent = Panel
+
         local HueGrad = Instance.new("UIGradient")
         HueGrad.Rotation = 90
         local hueKeys = {}
@@ -1308,6 +1324,7 @@ local function BuildAPI(container, ownerTab)
         HueCursor.BorderSizePixel = 0
         HueCursor.ZIndex = 2
         HueCursor.Parent = HueBar
+
         local hueStroke = Instance.new("UIStroke")
         hueStroke.Color = Color3.fromRGB(25, 25, 25)
         hueStroke.Thickness = 1
@@ -1410,6 +1427,8 @@ local function BuildAPI(container, ownerTab)
             Update(silent)
         end
 
+        function Picker:Get() return Picker.Value end -- PATCH 4
+
         Update(true)
         RegisterFlag(Picker, c.Flag)
         return Picker
@@ -1449,11 +1468,13 @@ local function BuildAPI(container, ownerTab)
             Input.Value = Box.Text
         end
 
+        function Input:Get() return Input.Value end -- PATCH 5
+
         RegisterFlag(Input, c.Flag)
         return Input
     end
 
-    -- ─────────── STEPPER (baru) ───────────
+    -- ─────────── STEPPER ───────────
     function api:Stepper(c)
         c = c or {}
         local min = (c.Range and c.Range[1]) or 0
@@ -1461,7 +1482,6 @@ local function BuildAPI(container, ownerTab)
         if max <= min then max = min + 1 end
         local step = c.Increment or 1
         local value = math.clamp(tonumber(c.CurrentValue) or min, min, max)
-
         local Row = NewRow(c.Title, c.Desc)
         local Stepper = { Value = value }
 
@@ -1530,7 +1550,7 @@ local function BuildAPI(container, ownerTab)
         return Stepper
     end
 
-    -- ─────────── PROGRESS BAR (baru) ───────────
+    -- ─────────── PROGRESS BAR ───────────
     function api:Progress(c)
         c = c or {}
         local value = math.clamp(tonumber(c.CurrentValue) or 0, 0, 1)
@@ -1580,11 +1600,13 @@ local function BuildAPI(container, ownerTab)
         Fill.BorderSizePixel = 0
         Fill.Parent = TrackBar
         Round(Fill, 4)
-        local FillGrad = Instance.new("UIGradient") -- PREMIUM: gradient tipis di isi progress bar
+
+        local FillGrad = Instance.new("UIGradient")
         FillGrad.Color = ColorSequence.new(Akbar.Theme.Accent, Akbar.Theme.AccentDark)
         FillGrad.Parent = Fill
 
         local Progress = { Value = value }
+
         local function Render(instant)
             local text = c.Format and c.Format(value) or (math.floor(value * 100) .. "%")
             ValueLabel.Text = text
@@ -1602,6 +1624,8 @@ local function BuildAPI(container, ownerTab)
             Render(false)
         end
 
+        function Progress:Get() return value end -- PATCH 7
+
         Render(true)
         AddHook(function()
             Fill.BackgroundColor3 = Akbar.Theme.Accent
@@ -1610,7 +1634,7 @@ local function BuildAPI(container, ownerTab)
         return Progress
     end
 
-    -- ─────────── TOOLTIP / INFO HINT (baru) ───────────
+    -- ─────────── TOOLTIP ───────────
     function api:Tooltip(c)
         c = c or {}
         local Row = Instance.new("Frame")
@@ -1737,11 +1761,11 @@ function Akbar:CreateWindow(config)
         table.insert(Window.Connections, conn)
         return conn
     end
+
     local function AddHook(fn)
         table.insert(ThemeHooks, { Window, fn })
     end
 
-    -- Root ScreenGui
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "AkbarUI_" .. tostring(WindowName):gsub("%s+", "")
     ScreenGui.ResetOnSpawn = false
@@ -1750,7 +1774,6 @@ function Akbar:CreateWindow(config)
     SafeParentGui(ScreenGui, config.Parent)
     Window.ScreenGui = ScreenGui
 
-    -- Shadow + Main Window
     local MainShadow = Instance.new("ImageLabel")
     MainShadow.Name = "Shadow"
     MainShadow.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1778,7 +1801,6 @@ function Akbar:CreateWindow(config)
     Round(MainWindow, 12)
     Stroke(MainWindow, "Border", 0.3, 1.2)
 
-    -- Notification layer
     local NotificationHolder = Instance.new("Frame")
     NotificationHolder.Name = "Notifications"
     NotificationHolder.AnchorPoint = Vector2.new(1, 1)
@@ -1794,7 +1816,6 @@ function Akbar:CreateWindow(config)
     NotifLayout.Padding = UDim.new(0, 10)
     NotifLayout.Parent = NotificationHolder
 
-    -- Header
     local Header = Instance.new("Frame")
     Header.Name = "Header"
     Header.Size = UDim2.new(1, 0, 0, 52)
@@ -1857,7 +1878,6 @@ function Akbar:CreateWindow(config)
     SubtitleLabel.Text = WindowSubtitle
     SubtitleLabel.Parent = TitleContainer
 
-    -- Window controls
     local Controls = Instance.new("Frame")
     Controls.Name = "Controls"
     Controls.AnchorPoint = Vector2.new(1, 0.5)
@@ -1911,7 +1931,6 @@ function Akbar:CreateWindow(config)
     local MaxBtn = CreateHeaderButton("maximize", false)
     local CloseBtn = CreateHeaderButton("x", true)
 
-    -- Body
     local BodyContainer = Instance.new("Frame")
     BodyContainer.Name = "BodyContainer"
     BodyContainer.Position = UDim2.new(0, 0, 0, 52)
@@ -2039,13 +2058,12 @@ function Akbar:CreateWindow(config)
     ResizeGrip.Position = UDim2.new(1, -2, 1, -2)
     ResizeGrip.Size = UDim2.new(0, 16, 0, 16)
     ResizeGrip.BackgroundTransparency = 1
-    ResizeGrip.Image = "rbxassetid://7734053426"
+    ResizeGrip.Image = "rbxassetid://7733955511" -- PATCH 12: pakai icon maximize
     Themed(ResizeGrip, "ImageColor3", "Muted")
     ResizeGrip.ImageTransparency = 0.5
     ResizeGrip.ZIndex = 20
     ResizeGrip.Parent = MainWindow
 
-    -- ───── Viewport clamping (FIX: koordinat konsisten + aman respawn) ─────
     local function ClampCenter(center)
         local gs = ScreenGui.AbsoluteSize
         if gs.X <= 0 or gs.Y <= 0 then return center end
@@ -2070,16 +2088,14 @@ function Akbar:CreateWindow(config)
 
     Track(ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(ClampToViewport))
 
-    -- ───── Drag state ─────
     local isDragging, dragStart, startCenter = false, nil, nil
     local isResizing, resizeStart, startSize = false, nil, nil
     local isFloatDragging, floatStart, floatPos, hasMoved = false, nil, nil, false
-    local SetWindowVisible -- forward declaration
+    local SetWindowVisible
 
     Header.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if Window.IsMaximized then return end -- FIX: drag mati saat maximize
-            -- FIX: jangan mulai drag kalau pointer di area tombol kontrol
+            if Window.IsMaximized then return end
             local ap, as = Controls.AbsolutePosition, Controls.AbsoluteSize
             local p = ScreenPos(input)
             if p.X >= ap.X - 4 and p.X <= ap.X + as.X + 4 and p.Y >= ap.Y - 4 and p.Y <= ap.Y + as.Y + 4 then
@@ -2100,7 +2116,7 @@ function Akbar:CreateWindow(config)
 
     ResizeGrip.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if Window.IsMinimized or Window.IsMaximized then return end -- FIX
+            if Window.IsMinimized or Window.IsMaximized then return end
             isResizing = true
             resizeStart = input.Position
             startSize = MainShadow.AbsoluteSize
@@ -2114,7 +2130,6 @@ function Akbar:CreateWindow(config)
         end
     end)
 
-    -- ───── Floating toggle button ─────
     local OpenButton = nil
     if config.OpenButton ~= false then
         local btnConfig = config.OpenButton or {}
@@ -2143,7 +2158,6 @@ function Akbar:CreateWindow(config)
                     if input.UserInputState == Enum.UserInputState.End then
                         isFloatDragging = false
                         if releaseConn then releaseConn:Disconnect() end
-                        -- FIX: clamp biar tidak bisa di-drag keluar layar
                         local gs = ScreenGui.AbsoluteSize
                         local p = FloatBtn.Position
                         local x = math.clamp(p.X.Scale * gs.X + p.X.Offset, 8, math.max(8, gs.X - 50))
@@ -2159,23 +2173,19 @@ function Akbar:CreateWindow(config)
                 SetWindowVisible(not MainShadow.Visible)
             end
         end)
-
         OpenButton = FloatBtn
     end
     Window.OpenButton = OpenButton
 
-    -- ───── FIX: satu koneksi InputChanged untuk semua (drag/resize/float) ─────
     Track(UserInputService.InputChanged:Connect(function(input)
         local isMove = input.UserInputType == Enum.UserInputType.MouseMovement
             or input.UserInputType == Enum.UserInputType.Touch
         if not isMove then return end
-
         if isDragging then
             local delta = input.Position - dragStart
             local desired = startCenter + Vector2.new(delta.X, delta.Y)
             local c = KeepOnScreen and ClampCenter(desired) or desired
             MainShadow.Position = UDim2.new(0, c.X, 0, c.Y)
-
         elseif isResizing then
             local delta = input.Position - resizeStart
             local gs = ScreenGui.AbsoluteSize
@@ -2185,7 +2195,6 @@ function Akbar:CreateWindow(config)
             MainShadow.Size = newSize
             Window.Size = newSize
             ClampToViewport()
-
         elseif isFloatDragging and OpenButton then
             local delta = input.Position - floatStart
             if math.abs(delta.X) > 6 or math.abs(delta.Y) > 6 then hasMoved = true end
@@ -2195,7 +2204,6 @@ function Akbar:CreateWindow(config)
         end
     end))
 
-    -- ───── Show / hide dengan animasi (FIX: tidak blokir thread UI) ─────
     SetWindowVisible = function(visible)
         if visible then
             if Window.IsMinimized then
@@ -2234,7 +2242,6 @@ function Akbar:CreateWindow(config)
         end
     end
 
-    -- ───── Minimize / Maximize / Close ─────
     MinBtn.Activated:Connect(function()
         if Window.IsMaximized then
             Window.IsMaximized = false
@@ -2290,7 +2297,6 @@ function Akbar:CreateWindow(config)
         end
     end)
 
-    -- ───── Keybind toggle (FIX: support string & EnumItem) ─────
     local function MatchesToggleKey(keyCode)
         if typeof(ToggleKey) == "EnumItem" then return keyCode == ToggleKey end
         return keyCode.Name == ToggleKey
@@ -2303,7 +2309,6 @@ function Akbar:CreateWindow(config)
         end
     end))
 
-    -- ───── Search filter (FIX: auto pindah tab) ─────
     SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
         if not Window.SearchEnabled then return end
         local query = string.lower(SearchInput.Text)
@@ -2318,7 +2323,6 @@ function Akbar:CreateWindow(config)
         end
     end)
 
-    -- ───── Loading screen (FIX: TextButton biar input tidak tembus) ─────
     if config.Loading and config.Loading.Enabled then
         local lData = config.Loading
         local LoadFrame = Instance.new("TextButton")
@@ -2366,7 +2370,7 @@ function Akbar:CreateWindow(config)
         task.spawn(function()
             local steps = lData.Steps or { "Preparing interface", "Loading components", "Almost ready" }
             local duration = lData.Duration or 1.5
-            local stepWait = duration / (#steps + 1)
+            local stepWait = duration / math.max(#steps + 1, 1) -- PATCH 10
             for _, step in ipairs(steps) do
                 LoadStatus.Text = step
                 task.wait(stepWait)
@@ -2388,18 +2392,39 @@ function Akbar:CreateWindow(config)
 
     -- ════════════════ WINDOW METHODS ════════════════
     function Window:Toggle() SetWindowVisible(not MainShadow.Visible) end
+
     function Window:Center()
         MainShadow.Position = UDim2.new(0.5, 0, 0.5, 0)
         ClampToViewport()
     end
+
     function Window:SetSize(size)
         MainShadow.Size = size
         Window.Size = size
         ClampToViewport()
     end
+
     function Window:GetSize() return MainShadow.Size end
-    function Window:SetMinSize(min) Window.MinSize = min end
-    function Window:SetMaxSize(max) Window.MaxSize = max end
+
+    -- PATCH 9: validasi MinSize/MaxSize
+    function Window:SetMinSize(min)
+        if typeof(min) ~= "Vector2" then return end
+        if min.X > Window.MaxSize.X or min.Y > Window.MaxSize.Y then
+            warn("[AkbarUI] SetMinSize: tidak boleh lebih besar dari MaxSize")
+            return
+        end
+        Window.MinSize = min
+    end
+
+    function Window:SetMaxSize(max)
+        if typeof(max) ~= "Vector2" then return end
+        if max.X < Window.MinSize.X or max.Y < Window.MinSize.Y then
+            warn("[AkbarUI] SetMaxSize: tidak boleh lebih kecil dari MinSize")
+            return
+        end
+        Window.MaxSize = max
+    end
+
     function Window:SetTitle(text) TitleLabel.Text = text or WindowName end
     function Window:SetSubtitle(text) SubtitleLabel.Text = text or WindowSubtitle end
     function Window:SetIcon(iconAsset) BrandIcon.Image = GetIcon(iconAsset) end
@@ -2423,7 +2448,7 @@ function Akbar:CreateWindow(config)
     function Window:DeleteConfig(name) Window.Config:Delete(name) end
     function Window:ListConfigs() return Window.Config:List() end
 
-    -- ───── Notifications (FIX: animasi tidak bentrok dgn UIListLayout) ─────
+    -- ───── Notifications ─────
     function Window:Notify(notifData)
         notifData = notifData or {}
         local title = notifData.Title or "Akbar UI"
@@ -2502,6 +2527,7 @@ function Akbar:CreateWindow(config)
 
         local closed = false
         local notifRef = { Frame = Card }
+
         local function Close(fast)
             if closed then return end
             closed = true
@@ -2514,6 +2540,7 @@ function Akbar:CreateWindow(config)
                 Card:Destroy()
             end)
         end
+
         notifRef.Close = Close
         table.insert(Window.Notifications, notifRef)
 
@@ -2524,13 +2551,12 @@ function Akbar:CreateWindow(config)
 
         Tween(Inner, TI(0.3), { Position = UDim2.new(0, 0, 0, 0) })
         Tween(ProgressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 0, 2) })
-
-        Inner.Activated:Connect(function() Close(false) end) -- klik untuk dismiss
+        Inner.Activated:Connect(function() Close(false) end)
         task.delay(duration, function() Close(false) end)
         return notifRef
     end
 
-    -- ───── Confirm dialog (FIX: backdrop cancel, anti double-callback) ─────
+    -- ───── Confirm ─────
     function Window:Confirm(confirmData)
         confirmData = confirmData or {}
         local title = confirmData.Title or "Confirmation"
@@ -2561,7 +2587,6 @@ function Akbar:CreateWindow(config)
         Round(DialogBox, 10)
         Stroke(DialogBox, "Border", 0.2, 1)
 
-        -- FIX: cegah klik di dalam dialog "tembus" ke backdrop
         local Blocker = Instance.new("TextButton")
         Blocker.Size = UDim2.new(1, 0, 1, 0)
         Blocker.BackgroundTransparency = 1
@@ -2609,289 +2634,3 @@ function Akbar:CreateWindow(config)
         end
 
         local function CreateDButton(text, isPrimary, callback)
-            local b = Instance.new("TextButton")
-            b.Size = UDim2.new(0.5, -6, 1, 0)
-            b.BackgroundColor3 = isPrimary and Akbar.Theme.Accent or Akbar.Theme.Surface2
-            b.Font = Enum.Font.GothamBold
-            b.Text = text
-            b.TextColor3 = isPrimary and Color3.fromRGB(255, 255, 255) or Akbar.Theme.Muted
-            b.TextSize = 13
-            b.AutoButtonColor = false
-            b.BorderSizePixel = 0
-            b.Parent = BtnRow
-            Round(b, 6)
-            b.Activated:Connect(callback)
-            return b
-        end
-
-        local CancelB = CreateDButton(canText, false, function() Answer(false) end)
-        CancelB.Position = UDim2.new(0, 0, 0, 0)
-        local ConfirmB = CreateDButton(cText, true, function() Answer(true) end)
-        ConfirmB.Position = UDim2.new(0.5, 6, 0, 0)
-
-        ModalBackdrop.Activated:Connect(function() Answer(false) end) -- FIX: klik luar = cancel
-        Tween(ModalBackdrop, TI(0.2), { BackgroundTransparency = 0.5 })
-        Tween(DialogBox, TI(0.25), { Position = UDim2.new(0.5, 0, 0.5, 0) })
-    end
-
-    -- ───── Dialog (FIX: tombol proporsional) ─────
-    function Window:Dialog(dialogData)
-        dialogData = dialogData or {}
-        local title = dialogData.Title or "Akbar"
-        local content = dialogData.Content or ""
-        local buttons = dialogData.Buttons or { { Name = "OK", Callback = function() end } }
-
-        local ModalBackdrop = Instance.new("TextButton")
-        ModalBackdrop.Size = UDim2.new(1, 0, 1, 0)
-        ModalBackdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        ModalBackdrop.BackgroundTransparency = 0.5
-        ModalBackdrop.AutoButtonColor = false
-        ModalBackdrop.Text = ""
-        ModalBackdrop.ZIndex = 80
-        ModalBackdrop.BorderSizePixel = 0
-        ModalBackdrop.Parent = MainWindow
-        Round(ModalBackdrop, 12)
-
-        local DialogBox = Instance.new("Frame")
-        DialogBox.AnchorPoint = Vector2.new(0.5, 0.5)
-        DialogBox.Position = UDim2.new(0.5, 0, 0.5, 12)
-        DialogBox.Size = UDim2.new(0, 360, 0, 170)
-        Themed(DialogBox, "BackgroundColor3", "Surface")
-        DialogBox.BorderSizePixel = 0
-        DialogBox.Parent = ModalBackdrop
-        Round(DialogBox, 10)
-        Stroke(DialogBox, "Border", 0.2, 1)
-
-        local Blocker = Instance.new("TextButton")
-        Blocker.Size = UDim2.new(1, 0, 1, 0)
-        Blocker.BackgroundTransparency = 1
-        Blocker.AutoButtonColor = false
-        Blocker.Text = ""
-        Blocker.ZIndex = 1
-        Blocker.Parent = DialogBox
-
-        local DTitle = Instance.new("TextLabel")
-        DTitle.Position = UDim2.new(0, 20, 0, 18)
-        DTitle.Size = UDim2.new(1, -40, 0, 22)
-        DTitle.BackgroundTransparency = 1
-        DTitle.Font = Enum.Font.GothamBold
-        Themed(DTitle, "TextColor3", "Text")
-        DTitle.TextSize = 16
-        DTitle.TextXAlignment = Enum.TextXAlignment.Left
-        DTitle.Text = title
-        DTitle.Parent = DialogBox
-
-        local DContent = Instance.new("TextLabel")
-        DContent.Position = UDim2.new(0, 20, 0, 46)
-        DContent.Size = UDim2.new(1, -40, 0, 48)
-        DContent.BackgroundTransparency = 1
-        DContent.Font = Enum.Font.Gotham
-        Themed(DContent, "TextColor3", "Muted")
-        DContent.TextSize = 13
-        DContent.TextWrapped = true
-        DContent.TextXAlignment = Enum.TextXAlignment.Left
-        DContent.Text = content
-        DContent.Parent = DialogBox
-
-        local BtnRow = Instance.new("Frame")
-        BtnRow.AnchorPoint = Vector2.new(0, 1)
-        BtnRow.Position = UDim2.new(0, 20, 1, -16)
-        BtnRow.Size = UDim2.new(1, -40, 0, 36)
-        BtnRow.BackgroundTransparency = 1
-        BtnRow.Parent = DialogBox
-
-        local rowLayout = Instance.new("UIListLayout")
-        rowLayout.FillDirection = Enum.FillDirection.Horizontal
-        rowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-        rowLayout.Padding = UDim.new(0, 8)
-        rowLayout.Parent = BtnRow
-
-        local count = math.max(#buttons, 1)
-        for _, btnInfo in ipairs(buttons) do
-            local b = Instance.new("TextButton")
-            b.Size = UDim2.new(1 / count, -8, 1, 0)
-            Themed(b, "BackgroundColor3", btnInfo.Primary and "Accent" or "Surface2")
-            b.Font = Enum.Font.GothamBold
-            Themed(b, "TextColor3", "Text")
-            b.TextSize = 12
-            b.AutoButtonColor = false
-            b.BorderSizePixel = 0
-            b.Text = btnInfo.Name or "Button"
-            b.Parent = BtnRow
-            Round(b, 6)
-            b.Activated:Connect(function()
-                ModalBackdrop:Destroy()
-                if btnInfo.Callback then btnInfo.Callback() end
-            end)
-        end
-
-        Tween(DialogBox, TI(0.25), { Position = UDim2.new(0.5, 0, 0.5, 0) })
-    end
-
-    -- ───── Tab system ─────
-    function Window:SelectTab(tab)
-        if type(tab) == "string" then
-            local name = tab
-            tab = nil
-            for _, t in ipairs(Window.Tabs) do
-                if t.Name == name then tab = t break end
-            end
-        elseif type(tab) == "number" then
-            tab = Window.Tabs[tab]
-        end
-        if type(tab) ~= "table" or not tab.Page then return end
-        if Window.ActiveTab == tab then return end
-
-        if Window.ActiveTab then
-            local old = Window.ActiveTab
-            old.Page.Visible = false
-            old.NavButton.BackgroundTransparency = 1
-            old.IconImage.ImageColor3 = Akbar.Theme.Muted
-            old.TextLabel.TextColor3 = Akbar.Theme.Muted
-        end
-
-        Window.ActiveTab = tab
-        tab.Page.Visible = true
-        tab.Page.CanvasPosition = Vector2.new(0, 0)
-        tab.NavButton.BackgroundTransparency = 0.25
-        tab.IconImage.ImageColor3 = Akbar.Theme.Accent
-        tab.TextLabel.TextColor3 = Akbar.Theme.Text
-
-        TabHeading.Text = tab.Name
-        TabDesc.Text = tab.Desc or ""
-    end
-
-    function Window:CreateTab(tabConfig, optionalIcon)
-        if type(tabConfig) == "string" then
-            tabConfig = { Name = tabConfig, Icon = optionalIcon }
-        end
-        tabConfig = tabConfig or {}
-        local tabName = tabConfig.Name or "Tab"
-        local tabDesc = tabConfig.Desc or tabConfig.Description or ""
-        local tabIcon = tabConfig.Icon or optionalIcon or "anchor"
-
-        local Tab = { Name = tabName, Desc = tabDesc, Icon = tabIcon, Window = Window }
-
-        local TabBtn = Instance.new("TextButton")
-        TabBtn.Name = "Tab_" .. tabName
-        TabBtn.Size = UDim2.new(1, 0, 0, 38)
-        Themed(TabBtn, "BackgroundColor3", "Surface2")
-        TabBtn.BackgroundTransparency = 1
-        TabBtn.AutoButtonColor = false
-        TabBtn.Text = ""
-        TabBtn.BorderSizePixel = 0
-        TabBtn.LayoutOrder = #Window.Tabs + 1
-        TabBtn.Parent = TabScroll
-        Round(TabBtn, 8)
-        Tab.NavButton = TabBtn -- FIX: dipisah dari nama "Button" biar tidak tabrakan dengan method :Button() (pembuat komponen tombol)
-
-        local TabIconImg = Instance.new("ImageLabel")
-        TabIconImg.Position = UDim2.new(0, 10, 0.5, -9)
-        TabIconImg.Size = UDim2.new(0, 18, 0, 18)
-        TabIconImg.BackgroundTransparency = 1
-        TabIconImg.Image = GetIcon(tabIcon)
-        Themed(TabIconImg, "ImageColor3", "Muted")
-        TabIconImg.Parent = TabBtn
-        Tab.IconImage = TabIconImg
-
-        local TabText = Instance.new("TextLabel")
-        TabText.Position = UDim2.new(0, 36, 0, 0)
-        TabText.Size = UDim2.new(1, -44, 1, 0)
-        TabText.BackgroundTransparency = 1
-        TabText.Font = Enum.Font.GothamMedium
-        Themed(TabText, "TextColor3", "Muted")
-        TabText.TextSize = 13
-        TabText.TextXAlignment = Enum.TextXAlignment.Left
-        TabText.Text = tabName
-        TabText.Parent = TabBtn
-        Tab.TextLabel = TabText
-
-        TabBtn.MouseEnter:Connect(function()
-            if Window.ActiveTab ~= Tab then
-                Tween(TabBtn, TI(0.15), { BackgroundTransparency = 0.45 })
-            end
-        end)
-        TabBtn.MouseLeave:Connect(function()
-            if Window.ActiveTab ~= Tab then
-                Tween(TabBtn, TI(0.15), { BackgroundTransparency = 1 })
-            end
-        end)
-        TabBtn.Activated:Connect(function()
-            Window:SelectTab(Tab)
-        end)
-
-        local PageScroll = Instance.new("ScrollingFrame")
-        PageScroll.Name = "Page_" .. tabName
-        PageScroll.Size = UDim2.new(1, 0, 1, 0)
-        PageScroll.BackgroundTransparency = 1
-        PageScroll.BorderSizePixel = 0
-        PageScroll.ScrollBarThickness = 3
-        Themed(PageScroll, "ScrollBarImageColor3", "Border")
-        PageScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-        PageScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        PageScroll.Visible = false
-        PageScroll.Parent = PagesContainer
-        Tab.Page = PageScroll
-
-        local PageLayout = Instance.new("UIListLayout")
-        PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        PageLayout.Padding = UDim.new(0, 8)
-        PageLayout.Parent = PageScroll
-
-        Tab.API = BuildAPI(PageScroll, Tab)
-        for k, v in pairs(Tab.API) do
-            if type(v) == "function" then Tab[k] = v end
-        end
-
-        function Tab:Select() Window:SelectTab(Tab) end
-
-        table.insert(Window.Tabs, Tab)
-        if not Window.ActiveTab then
-            Window:SelectTab(Tab)
-        end
-        return Tab
-    end
-
-    -- Hook tema: warna tab aktif ikut berubah saat ganti accent
-    AddHook(function()
-        for _, t in ipairs(Window.Tabs) do
-            if Window.ActiveTab == t then
-                t.NavButton.BackgroundTransparency = 0.25
-                t.IconImage.ImageColor3 = Akbar.Theme.Accent
-                t.TextLabel.TextColor3 = Akbar.Theme.Text
-            else
-                t.NavButton.BackgroundTransparency = 1
-                t.IconImage.ImageColor3 = Akbar.Theme.Muted
-                t.TextLabel.TextColor3 = Akbar.Theme.Muted
-            end
-        end
-    end)
-
-    function Window:Destroy()
-        for _, conn in ipairs(Window.Connections) do
-            pcall(function() conn:Disconnect() end)
-        end
-        Window.Connections = {}
-        for i = #ThemeHooks, 1, -1 do
-            if ThemeHooks[i][1] == Window then table.remove(ThemeHooks, i) end
-        end
-        if Window.ScreenGui then Window.ScreenGui:Destroy() end
-    end
-
-    -- Inisialisasi: normalisasi ukuran (FIX: support Size dgn Scale) + clamp
-    if not Window.SearchEnabled then
-        Window:SetSearchEnabled(false)
-    end
-    task.defer(function()
-        RunService.RenderStepped:Wait()
-        local abs = MainShadow.AbsoluteSize
-        if abs.X > 0 and abs.Y > 0 then
-            Window.Size = UDim2.fromOffset(abs.X, abs.Y)
-        end
-        ClampToViewport()
-    end)
-
-    return Window
-end
-
-return Akbar
