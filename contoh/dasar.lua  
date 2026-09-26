@@ -1,0 +1,50 @@
+--[[
+    AKBAR UI — BASIC EXAMPLE
+    Contoh paling sederhana: Window + 1 Tab + Toggle + Button
+    Cocok buat pemula yang baru pertama kali pakai Akbar UI.
+    File: contoh/dasar.lua
+]]
+
+local Akbar = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/refs/heads/main/AkbarUI.lua"
+))()
+
+-- 1. Buat Window
+local Window = Akbar:CreateWindow({
+    Name = "Basic Example",
+    LoadingSubtitle = "Hello World!",
+    Icon = "zap",
+    ToggleUIKeybind = "RightControl", -- Tekan Right Ctrl buat show/hide
+})
+
+-- 2. Buat Tab
+local Tab = Window:CreateTab({
+    Name = "Main",
+    Icon = "home",
+})
+
+-- 3. Tambah Toggle
+Tab:Toggle({
+    Title = "God Mode",
+    Desc = "Bikin karakter kebal",
+    Default = false,
+    Flag = "GodMode",
+    Callback = function(state)
+        print("God Mode:", state)
+    end,
+})
+
+-- 4. Tambah Button
+Tab:Button({
+    Title = "Klik Aku!",
+    Primary = true,
+    Callback = function()
+        Window:Notify({
+            Title = "Halo! 👋",
+            Content = "Ini contoh notifikasi dari Akbar UI.",
+            Type = "success",
+        })
+    end,
+})
+
+print("✅ Basic Example loaded! Tekan Right Ctrl untuk toggle UI.")
