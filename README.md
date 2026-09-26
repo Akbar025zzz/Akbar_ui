@@ -1,4 +1,3 @@
-```markdown
 <div align="center">
   <img src="https://img.shields.io/badge/Version-3.0.0-blue?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Platform-Roblox_Luau-red?style=for-the-badge" />
@@ -56,7 +55,7 @@ Load langsung dari GitHub pakai `loadstring` di baris paling atas script kamu:
 
 ```lua
 local Akbar = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/refs/heads/main/AkbarUI.lua"
+    "[https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/refs/heads/main/AkbarUI.lua](https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/refs/heads/main/AkbarUI.lua)"
 ))()
 ```
 
@@ -70,7 +69,7 @@ local Akbar = loadstring(game:HttpGet(
 
 ```lua
 local Akbar = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/refs/heads/main/AkbarUI.lua"
+    "[https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/refs/heads/main/AkbarUI.lua](https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/refs/heads/main/AkbarUI.lua)"
 ))()
 
 -- 1. Buat Window
@@ -449,23 +448,3 @@ Bebas dipakai untuk proyek pribadi maupun publik — mohon cantumkan credit kala
 📱 Instagram: [@akbaritusiapa](https://www.instagram.com/akbaritusiapa)
 
 Icon set oleh [Lucide](https://lucide.dev) — MIT License
-```
-
----
-
-**Perbedaan dari README lama:**
-
-| Bagian | Perubahan |
-|--------|-----------|
-| Badge | Tambah badge Icons + Components |
-| Fitur | Restructure jadi 3 kategori (Visual/Komponen/Sistem) |
-| Quick Start | Update pakai Section + fitur baru (Slider tooltip, AddConfigTab) |
-| API Table | Tambah semua komponen baru (Console, Spinner, Checklist, dll) |
-| Method Table | Tambah Window methods + Element States + Icon System |
-| Preset | 7 → 10 preset dengan tabel warna |
-| Icon Library | Section baru dengan daftar lengkap + custom icon guide |
-| Mobile | Tabel fitur mobile yang lebih detail |
-| Config | Tambah section Auto-Generated UI + Flag System |
-| Performance | Section baru dengan metrics + tips optimasi |
-| Troubleshooting | Tambah 4 entri baru (blur, overlapping, SetDisabled, search) |
-| Changelog | v3.0.0 lengkap dengan breakdown Added/Fixed |
