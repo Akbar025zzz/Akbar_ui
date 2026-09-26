@@ -1,0 +1,180 @@
+--[[
+    AKBAR UI — FULL DEMO (SHOWCASE)
+    Menampilkan SEMUA 14 komponen + fitur tema, notifikasi, dialog.
+    Pakai file ini buat lihat semua yang bisa dilakukan Akbar UI.
+    File: contoh/full_demo.lua
+]]
+
+local Akbar = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/refs/heads/main/AkbarUI.lua"
+))()
+
+local Window = Akbar:CreateWindow({
+    Name = "Akbar UI Showcase",
+    LoadingSubtitle = "v2.0 Full Demo",
+    Icon = "crown",
+    ToggleUIKeybind = "RightControl",
+    SearchEnabled = true,
+    Accordion = false,
+    Loading = {
+        Enabled = true,
+        Title = "AKBAR UI",
+        Steps = {"Loading components...", "Preparing demo...", "Done!"},
+        Duration = 1.2,
+    },
+})
+
+-- ═══════════ TAB 1: INPUTS ═══════════
+local InputsTab = Window:CreateTab({ Name = "Inputs", Icon = "layout-dashboard" })
+
+InputsTab:Toggle({
+    Title = "Toggle",
+    Desc = "Switch ON/OFF",
+    Default = true,
+})
+
+InputsTab:Slider({
+    Title = "Slider",
+    Min = 0, Max = 100, Default = 50,
+    Suffix = "%",
+})
+
+InputsTab:Dropdown({
+    Title = "Dropdown (Single)",
+    Options = {"Option A", "Option B", "Option C"},
+    Default = "Option A",
+})
+
+InputsTab:Dropdown({
+    Title = "Dropdown (Multi)",
+    Options = {"Apple", "Banana", "Cherry", "Durian"},
+    Multi = true,
+    Default = {"Apple", "Cherry"},
+})
+
+InputsTab:Input({
+    Title = "Text Input",
+    Placeholder = "Ketik sesuatu...",
+})
+
+InputsTab:Stepper({
+    Title = "Stepper",
+    Range = {1, 10},
+    Increment = 1,
+    CurrentValue = 5,
+})
+
+InputsTab:Keybind({
+    Title = "Keybind",
+    Default = "Q",
+})
+
+InputsTab:ColorPicker({
+    Title = "Color Picker",
+    Default = Color3.fromRGB(255, 100, 50),
+})
+
+-- ═══════════ TAB 2: DISPLAY ═══════════
+local DisplayTab = Window:CreateTab({ Name = "Display", Icon = "info" })
+
+DisplayTab:Label({ Title = "Ini Label — teks statis biasa" })
+
+DisplayTab:Paragraph({
+    Title = "Paragraph",
+    Desc = "Gunakan ini untuk penjelasan panjang. Teks otomatis wrap ke bawah kalau kepanjangan. Cocok buat tutorial atau info penting.",
+})
+
+DisplayTab:Divider()
+
+local progress = DisplayTab:Progress({
+    Title = "Progress Bar",
+    CurrentValue = 0.65,
+})
+
+-- Animasi progress naik pelan-pelan
+task.spawn(function()
+    for i = 65, 100, 5 do
+        task.wait(0.4)
+        progress:Set(i / 100)
+    end
+end)
+
+DisplayTab:Tooltip({
+    Title = "💡 Apa itu Flag?",
+    Text = "Flag adalah nama unik buat menyimpan nilai komponen ke config. Kalau komponen punya Flag, nilainya otomatis tersimpan pas user klik Save Config.",
+})
+
+-- ═══════════ TAB 3: ACTIONS & THEME ═══════════
+local ActionsTab = Window:CreateTab({ Name = "Actions", Icon = "zap" })
+
+ActionsTab:Button({
+    Title = "🔔 Notifikasi Success",
+    Callback = function()
+        Window:Notify({ Title = "Berhasil!", Content = "Aksi selesai.", Type = "success" })
+    end,
+})
+
+ActionsTab:Button({
+    Title = "⚠️ Notifikasi Warning",
+    Callback = function()
+        Window:Notify({ Title = "Peringatan!", Content = "Hati-hati!", Type = "warning" })
+    end,
+})
+
+ActionsTab:Button({
+    Title = "❌ Notifikasi Error",
+    Callback = function()
+        Window:Notify({ Title = "Error!", Content = "Terjadi kesalahan.", Type = "error" })
+    end,
+})
+
+ActionsTab:Button({
+    Title = "🗣️ Dialog Konfirmasi",
+    Primary = true,
+    Callback = function()
+        Window:Confirm({
+            Title = "Hapus Data?",
+            Content = "Tindakan ini tidak bisa dibatalkan.",
+            ConfirmText = "Ya, Hapus",
+            CancelText = "Batal",
+            Callback = function(ok)
+                if ok then
+                    Window:Notify({ Title = "Data Dihapus", Type = "warning" })
+                end
+            end,
+        })
+    end,
+})
+
+ActionsTab:Button({
+    Title = "🎯 Custom Dialog",
+    Callback = function()
+        Window:Dialog({
+            Title = "Pilih Hadiah",
+            Content = "Selamat naik level! Pilih satu:",
+            Buttons = {
+                { Name = "🗡️ Pedang", Primary = true, Callback = function() print("Pedang") end },
+                { Name = "🛡️ Perisai", Callback = function() print("Perisai") end },
+                { Name = "Tutup", Callback = function() end },
+            },
+        })
+    end,
+})
+
+ActionsTab:Divider()
+
+ActionsTab:Paragraph({
+    Title = "🎨 Ganti Tema",
+    Desc = "Pilih preset warna di bawah untuk ganti accent color UI secara live.",
+})
+
+ActionsTab:Dropdown({
+    Title = "Pilih Tema",
+    Options = Akbar:ListPresets(),
+    Default = "Default Blue",
+    Callback = function(selected)
+        Akbar:SetPreset(selected)
+    end,
+})
+
+print("✅ Full Demo Loaded! Jelajahi semua tab untuk lihat semua komponen.")
