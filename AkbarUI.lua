@@ -1,16 +1,21 @@
 --[[
-    AKBAR UI v2.0 — Modern Dark Glassmorphism UI Framework (Fixed & Complete)
-    Fitur : Window, Tab, Section (accordion), Toggle, Slider, Dropdown (multi),
+    AKBAR UI v3.0 — Modern Dark Glassmorphism UI Framework (Complete)
+    Fitur : Window, Tab, Section (accordion), Toggle, Slider, Dropdown (multi+search),
             Button, Label, Paragraph, Keybind, ColorPicker, Input, Divider,
-            Notification, Confirm/Dialog, Config Save/Load, Live Theme
-    Mobile: drag/resize/component support touch
+            Notification, Confirm/Dialog, Config Save/Load (UI), Live Theme (UI),
+            Console, Spinner, Checklist, Image, Badge, HoverTooltip,
+            Element States (Disabled/Visible/Destroy), Background Blur,
+            Slider Enhancements (OnRelease, Tooltip), Mobile UX
+    Mobile: drag/resize/component support touch + auto-fit
 ]]
 
 local Akbar = {}
 Akbar.__index = Akbar
-Akbar.Version = "2.0.0"
+Akbar.Version = "3.0.0"
 Akbar.AnimationEnabled = true
+Akbar.Windows = {}
 
+-- ════════════════════════ SERVICES ════════════════════════
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -18,7 +23,198 @@ local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService")
+local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
+
+-- ════════════════════════ ICON LIBRARY ════════════════════════
+local IconLib = {}
+IconLib.__index = IconLib
+
+-- Default icon set (individual IDs - simple & reliable)
+IconLib.Icons = {
+    ["crown"] = "rbxassetid://7733964719",
+    ["anchor"] = "rbxassetid://7733658504",
+    ["fish"] = "rbxassetid://7733919783",
+    ["pickaxe"] = "rbxassetid://7734053495",
+    ["bot"] = "rbxassetid://7733692043",
+    ["sprout"] = "rbxassetid://7734068321",
+    ["settings"] = "rbxassetid://7734053426",
+    ["home"] = "rbxassetid://7733960981",
+    ["info"] = "rbxassetid://7733965118",
+    ["user"] = "rbxassetid://7734091286",
+    ["users"] = "rbxassetid://7734091392",
+    ["zap"] = "rbxassetid://7734110803",
+    ["shield"] = "rbxassetid://7734056608",
+    ["wrench"] = "rbxassetid://7734110303",
+    ["refresh-cw"] = "rbxassetid://7734051050",
+    ["layout-dashboard"] = "rbxassetid://7733955740",
+    ["scroll-text"] = "rbxassetid://7734052335",
+    ["search"] = "rbxassetid://7734052925",
+    ["x"] = "rbxassetid://7734110595",
+    ["minus"] = "rbxassetid://7733911828",
+    ["maximize"] = "rbxassetid://7733955511",
+    ["chevron-down"] = "rbxassetid://7733717444",
+    ["chevron-up"] = "rbxassetid://7733717651",
+    ["chevron-left"] = "rbxassetid://73780377692148",
+    ["chevron-right"] = "rbxassetid://92473583511724",
+    ["check"] = "rbxassetid://7733715400",
+    ["save"] = "rbxassetid://7734052335",
+    ["palette"] = "rbxassetid://86350350950064",
+    ["terminal"] = "rbxassetid://106783148545356",
+    ["image"] = "rbxassetid://112751259236831",
+    ["bell"] = "rbxassetid://97392696311902",
+    ["bell-off"] = "rbxassetid://78560046118930",
+    ["trash"] = "rbxassetid://106723740584310",
+    ["trash-2"] = "rbxassetid://109843431391323",
+    ["loader-circle"] = "rbxassetid://116535712789945",
+    ["circle-alert"] = "rbxassetid://83898160590116",
+    ["circle-check"] = "rbxassetid://85262178816537",
+    ["circle-x"] = "rbxassetid://76821953846248",
+    ["circle-question"] = "rbxassetid://97516698664325",
+    ["cloud-download"] = "rbxassetid://121435581993566",
+    ["cloud-upload"] = "rbxassetid://93307473217005",
+    ["folder"] = "rbxassetid://80846616596607",
+    ["file"] = "rbxassetid://74748492079329",
+    ["code"] = "rbxassetid://107380207681249",
+    ["star"] = "rbxassetid://136141469398409",
+    ["heart"] = "rbxassetid://116559368303288",
+    ["eye"] = "rbxassetid://100033680381365",
+    ["eye-off"] = "rbxassetid://135928786788378",
+    ["lock"] = "rbxassetid://134724289526879",
+    ["key"] = "rbxassetid://96510194465420",
+    ["wifi"] = "rbxassetid://104669375183960",
+    ["wifi-off"] = "rbxassetid://74113634330106",
+    ["battery-full"] = "rbxassetid://70906718268972",
+    ["battery-low"] = "rbxassetid://139659256984314",
+    ["sun"] = "rbxassetid://110150589884127",
+    ["moon"] = "rbxassetid://83380517901735",
+    ["rocket"] = "rbxassetid://87412317685854",
+    ["flag"] = "rbxassetid://78183383236196",
+    ["gift"] = "rbxassetid://109855212076373",
+    ["gamepad"] = "rbxassetid://121607283959010",
+    ["headphones"] = "rbxassetid://118833729589183",
+    ["play"] = "rbxassetid://135609604299893",
+    ["pause"] = "rbxassetid://74873705394436",
+    ["power"] = "rbxassetid://96479131758775",
+    ["download"] = "rbxassetid://134814648082393",
+    ["upload"] = "rbxassetid://138212042425501",
+    ["copy"] = "rbxassetid://78979572434545",
+    ["edit"] = "rbxassetid://72037878096321",
+    ["plus"] = "rbxassetid://111774323017047",
+    ["arrow-right"] = "rbxassetid://113692007244654",
+    ["arrow-left"] = "rbxassetid://102531941843733",
+    ["arrow-up"] = "rbxassetid://89282378235317",
+    ["arrow-down"] = "rbxassetid://98764963621439",
+    ["clock"] = "rbxassetid://121808839832144",
+    ["calendar"] = "rbxassetid://114792700814035",
+    ["mail"] = "rbxassetid://103945161245599",
+    ["phone"] = "rbxassetid://128804946640049",
+    ["map-pin"] = "rbxassetid://84279202219901",
+    ["globe"] = "rbxassetid://114238209622913",
+    ["compass"] = "rbxassetid://115123411028382",
+    ["book"] = "rbxassetid://125383279695672",
+    ["bookmark"] = "rbxassetid://121093149326239",
+    ["tag"] = "rbxassetid://129104970103940",
+    ["ticket"] = "rbxassetid://126527071492145",
+    ["shopping-bag"] = "rbxassetid://71885477293226",
+    ["shopping-cart"] = "rbxassetid://128420521375441",
+    ["credit-card"] = "rbxassetid://99163352872346",
+    ["wallet"] = "rbxassetid://132331555762628",
+    ["dollar-sign"] = "rbxassetid://127320961224019",
+    ["trending-up"] = "rbxassetid://81819858538839",
+    ["trending-down"] = "rbxassetid://139309232226438",
+    ["bar-chart"] = "rbxassetid://105389816384108",
+    ["pie-chart"] = "rbxassetid://113412261630136",
+    ["activity"] = "rbxassetid://94212016861936",
+    ["bell-ring"] = "rbxassetid://94612128913941",
+    ["message-circle"] = "rbxassetid://127255077587058",
+    ["message-square"] = "rbxassetid://83881670383280",
+    ["send"] = "rbxassetid://127751956873796",
+    ["paperclip"] = "rbxassetid://92088291163453",
+    ["link"] = "rbxassetid://131607023382430",
+    ["share"] = "rbxassetid://87340985053299",
+    ["printer"] = "rbxassetid://76080649734247",
+    ["camera"] = "rbxassetid://79950339943067",
+    ["video"] = "rbxassetid://107587444636945",
+    ["music"] = "rbxassetid://113343203848535",
+    ["volume"] = "rbxassetid://103236289817396",
+    ["volume-2"] = "rbxassetid://89344380902620",
+    ["volume-x"] = "rbxassetid://139252359189540",
+    ["mic"] = "rbxassetid://89640799126523",
+    ["mic-off"] = "rbxassetid://82123034444822",
+    ["hard-drive"] = "rbxassetid://88183305858463",
+    ["database"] = "rbxassetid://126791525623846",
+    ["server"] = "rbxassetid://92188766517878",
+    ["cpu"] = "rbxassetid://77549309870247",
+    ["monitor"] = "rbxassetid://72664649203050",
+    ["laptop"] = "rbxassetid://111387063244975",
+    ["smartphone"] = "rbxassetid://96623008834511",
+    ["tablet"] = "rbxassetid://128403991264386",
+    ["tv"] = "rbxassetid://135687724791776",
+    ["monitor-smartphone"] = "rbxassetid://84335680433378",
+    ["fallback"] = "rbxassetid://7733964719"
+}
+
+-- Custom spritesheet support
+IconLib.Spritesheets = {}
+IconLib.SpritesheetIcons = {}
+
+function IconLib:RegisterSpritesheet(name, assetId, iconData)
+    IconLib.Spritesheets[name] = assetId
+    IconLib.SpritesheetIcons[name] = iconData
+end
+
+function IconLib:Get(iconName, size, color)
+    size = size or 24
+    
+    -- Check spritesheet first
+    for sheetName, icons in pairs(IconLib.SpritesheetIcons) do
+        local data = icons[iconName]
+        if data then
+            local icon = Instance.new("ImageLabel")
+            icon.Image = IconLib.Spritesheets[sheetName]
+            icon.ImageRectOffset = data.Position or Vector2.new(0, 0)
+            icon.ImageRectSize = data.Size or Vector2.new(24, 24)
+            icon.Size = UDim2.fromOffset(size, size)
+            icon.BackgroundTransparency = 1
+            icon.ImageColor3 = color or Color3.fromRGB(255, 255, 255)
+            return icon
+        end
+    end
+    
+    -- Fall back to individual icon
+    local iconId = IconLib.Icons[iconName:lower()] or IconLib.Icons.fallback
+    local icon = Instance.new("ImageLabel")
+    icon.Image = iconId
+    icon.Size = UDim2.fromOffset(size, size)
+    icon.BackgroundTransparency = 1
+    icon.ImageColor3 = color or Color3.fromRGB(255, 255, 255)
+    return icon
+end
+
+function IconLib:ListIcons()
+    local names = {}
+    for name in pairs(IconLib.Icons) do
+        table.insert(names, name)
+    end
+    table.sort(names)
+    return names
+end
+
+function IconLib:AddIcon(name, assetId)
+    IconLib.Icons[name:lower()] = assetId
+end
+
+local function GetIcon(name, size, color)
+    if type(name) ~= "string" or name == "" then
+        return IconLib.Icons.fallback
+    end
+    local lower = name:lower()
+    if lower:find("rbxassetid://", 1, true) or lower:find("http", 1, true) then
+        return name
+    end
+    return IconLib.Icons[lower] or IconLib.Icons.fallback
+end
 
 -- ════════════════════════ THEME ════════════════════════
 Akbar.Theme = {
@@ -38,8 +234,6 @@ Akbar.Theme = {
     GlassTransparency = 0.12,
 }
 
--- ════════════════════════ PRESET THEMES ════════════════════════
--- Palet siap pakai biar user tinggal panggil Akbar:SetPreset("Nama")
 Akbar.Presets = {
     ["Default Blue"] = { Accent = Color3.fromRGB(56, 130, 255), AccentDark = Color3.fromRGB(40, 95, 200) },
     ["Royal Purple"] = { Accent = Color3.fromRGB(147, 112, 255), AccentDark = Color3.fromRGB(110, 80, 210) },
@@ -48,33 +242,10 @@ Akbar.Presets = {
     ["Sunset Orange"] = { Accent = Color3.fromRGB(255, 150, 60), AccentDark = Color3.fromRGB(215, 115, 35) },
     ["Ocean Teal"] = { Accent = Color3.fromRGB(45, 200, 220), AccentDark = Color3.fromRGB(30, 160, 180) },
     ["Midnight Pink"] = { Accent = Color3.fromRGB(255, 105, 180), AccentDark = Color3.fromRGB(210, 75, 145) },
+    ["Cotton Candy"] = { Accent = Color3.fromRGB(255, 183, 197), AccentDark = Color3.fromRGB(220, 140, 160) },
+    ["Cyber Lime"] = { Accent = Color3.fromRGB(198, 255, 68), AccentDark = Color3.fromRGB(160, 210, 40) },
+    ["Deep Violet"] = { Accent = Color3.fromRGB(124, 77, 255), AccentDark = Color3.fromRGB(90, 55, 200) },
 }
-
-local Icons = {
-    ["crown"] = "rbxassetid://7733964719", ["anchor"] = "rbxassetid://7733658504",
-    ["fish"] = "rbxassetid://7733919783", ["pickaxe"] = "rbxassetid://7734053495",
-    ["bot"] = "rbxassetid://7733692043", ["sprout"] = "rbxassetid://7734068321",
-    ["settings"] = "rbxassetid://7734053426", ["home"] = "rbxassetid://7733960981",
-    ["info"] = "rbxassetid://7733965118", ["user"] = "rbxassetid://7734091286",
-    ["users"] = "rbxassetid://7734091392", ["zap"] = "rbxassetid://7734110803",
-    ["shield"] = "rbxassetid://7734056608", ["wrench"] = "rbxassetid://7734110303",
-    ["refresh-cw"] = "rbxassetid://7734051050", ["layout-dashboard"] = "rbxassetid://7733955740",
-    ["scroll-text"] = "rbxassetid://7734052335", ["search"] = "rbxassetid://7734052925",
-    ["x"] = "rbxassetid://7734110595", ["minus"] = "rbxassetid://7733911828",
-    ["maximize"] = "rbxassetid://7733955511", ["chevron-down"] = "rbxassetid://7733717444",
-    ["chevron-up"] = "rbxassetid://7733717651", ["check"] = "rbxassetid://7733715400",
-    ["save"] = "rbxassetid://7734052335", ["palette"] = "rbxassetid://7734053495",
-    ["fallback"] = "rbxassetid://7733964719"
-}
-
-local function GetIcon(name)
-    if type(name) ~= "string" or name == "" then return Icons.fallback end
-    local lower = string.lower(name) -- FIX: case-insensitive
-    if string.find(lower, "rbxassetid://", 1, true) or string.find(lower, "http", 1, true) then
-        return name
-    end
-    return Icons[lower] or Icons.fallback
-end
 
 -- ════════════════════════ LIVE THEME SYSTEM ════════════════════════
 local ThemedRegistry = {}
@@ -141,9 +312,6 @@ local function Stroke(inst, key, transparency, thickness)
     return s
 end
 
--- FIX/PREMIUM: efek tactile ringan (mengecil dikit saat ditekan) biar respon klik lebih "berasa",
--- terutama di HP dimana nggak ada hover state. Dipasang ke UIScale, bukan Size langsung,
--- biar tidak ganggu AutomaticSize/Layout milik elemen aslinya.
 local function PressFeedback(button, minScale)
     minScale = minScale or 0.96
     local scale = Instance.new("UIScale")
@@ -179,13 +347,11 @@ local function FindParentScroll(obj)
     return nil
 end
 
--- FIX: cegah scroll frame parent scroll saat drag slider/colorpicker
 local function SetScrollEnabled(obj, enabled)
     local scroll = FindParentScroll(obj)
     if scroll then scroll.ScrollingEnabled = enabled end
 end
 
--- FIX: input.Position & AbsolutePosition beda ruang koordinat (GUI inset)
 local function ScreenPos(input)
     local it = input.UserInputType
     if it == Enum.UserInputType.MouseButton1 or it == Enum.UserInputType.MouseButton2
@@ -271,7 +437,6 @@ function ConfigManager:Load(fileName)
             if type(val) == "table" and val.__type == "Color3" then
                 pcall(item.Set, Color3.new(val.r or 0, val.g or 0, val.b or 0))
             elseif type(val) == "table" and val.__type == "EnumItem" then
-                -- FIX: EnumItem sebelumnya tersimpan tapi gagal di-load
                 local typeName = string.match(tostring(val.enum), "%.([%w_]+)$")
                 local enumItem = nil
                 if typeName then
@@ -359,15 +524,150 @@ function Akbar:RefreshTheme()
     RefreshThemed()
 end
 
+function Akbar:DestroyAll()
+    for _, w in ipairs(Akbar.Windows) do
+        pcall(function() w:Destroy() end)
+    end
+    Akbar.Windows = {}
+end
+
+-- ════════════════════════ HOVER TOOLTIP ════════════════════════
+local function CreateHoverTooltip(parentGui, target, text)
+    local Tooltip
+    local function Show(x, y)
+        if Tooltip then Tooltip:Destroy() end
+        Tooltip = Instance.new("TextLabel")
+        Tooltip.Name = "HoverTooltip"
+        Tooltip.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+        Tooltip.BackgroundTransparency = 0.1
+        Tooltip.BorderSizePixel = 0
+        Tooltip.Font = Enum.Font.GothamMedium
+        Tooltip.TextColor3 = Color3.fromRGB(245, 247, 252)
+        Tooltip.TextSize = 12
+        Tooltip.Text = text
+        Tooltip.AutomaticSize = Enum.AutomaticSize.XY
+        Tooltip.Padding = UDim.new(0, 8)
+        Tooltip.Size = UDim2.fromOffset(0, 0)
+        Tooltip.ZIndex = 200
+        Tooltip.Parent = parentGui
+        Round(Tooltip, 6)
+        Stroke(Tooltip, "Border", 0.3, 1)
+        
+        local pad = Instance.new("UIPadding")
+        pad.PaddingLeft = UDim.new(0, 8)
+        pad.PaddingRight = UDim.new(0, 8)
+        pad.PaddingTop = UDim.new(0, 4)
+        pad.PaddingBottom = UDim.new(0, 4)
+        pad.Parent = Tooltip
+        
+        local mouse = UserInputService:GetMouseLocation()
+        local inset = GuiService:GetGuiInset()
+        Tooltip.Position = UDim2.new(0, mouse.X + 12, 0, mouse.Y - inset.Y - 30)
+    end
+    
+    local function Hide()
+        if Tooltip then
+            Tween(Tooltip, TI(0.1), { TextTransparency = 1, BackgroundTransparency = 1 }):AndThen(function()
+                if Tooltip then Tooltip:Destroy() Tooltip = nil end
+            end)
+        end
+    end
+    
+    target.MouseEnter:Connect(function() Show() end)
+    target.MouseLeave:Connect(Hide)
+    target.Destroying:Connect(function() if Tooltip then Tooltip:Destroy() end end)
+end
+
+-- ════════════════════════ ELEMENT STATES HELPER ════════════════════════
+local function SetupElementStates(element, instances)
+    local state = { Disabled = false, Visible = true }
+    local originalTransparency = {}
+    
+    -- Simpan transparency awal semua instance
+    for _, inst in ipairs(instances) do
+        if inst then
+            originalTransparency[inst] = {
+                Background = inst.BackgroundTransparency,
+                Text = inst:IsA("TextLabel") and inst.TextTransparency or nil,
+                Image = inst:IsA("ImageLabel") and inst.ImageTransparency or nil,
+            }
+        end
+    end
+    
+    function element:SetDisabled(disabled)
+        state.Disabled = disabled
+        for _, inst in ipairs(instances) do
+            if inst then
+                pcall(function()
+                    if disabled then
+                        Tween(inst, TI(0.2), { BackgroundTransparency = math.min((originalTransparency[inst].Background or 0) + 0.5, 1) })
+                        if inst:IsA("TextLabel") then
+                            Tween(inst, TI(0.2), { TextTransparency = math.min((originalTransparency[inst].Text or 0) + 0.5, 1) })
+                        end
+                        if inst:IsA("ImageLabel") then
+                            Tween(inst, TI(0.2), { ImageTransparency = math.min((originalTransparency[inst].Image or 0) + 0.5, 1) })
+                        end
+                        if inst:IsA("GuiButton") then
+                            inst.AutoButtonColor = false
+                        end
+                    else
+                        Tween(inst, TI(0.2), { BackgroundTransparency = originalTransparency[inst].Background or 0 })
+                        if inst:IsA("TextLabel") then
+                            Tween(inst, TI(0.2), { TextTransparency = originalTransparency[inst].Text or 0 })
+                        end
+                        if inst:IsA("ImageLabel") then
+                            Tween(inst, TI(0.2), { ImageTransparency = originalTransparency[inst].Image or 0 })
+                        end
+                        if inst:IsA("GuiButton") then
+                            inst.AutoButtonColor = true
+                        end
+                    end
+                end)
+            end
+        end
+    end
+    
+    function element:SetVisible(visible)
+        state.Visible = visible
+        for _, inst in ipairs(instances) do
+            if inst then
+                if visible then
+                    inst.Visible = true
+                else
+                    inst.Visible = false
+                end
+            end
+        end
+    end
+    
+    function element:Destroy()
+        for _, inst in ipairs(instances) do
+            if inst then pcall(function() inst:Destroy() end) end
+        end
+        if element._connections then
+            for _, conn in ipairs(element._connections) do
+                pcall(function() conn:Disconnect() end)
+            end
+        end
+    end
+    
+    return state
+end
+
 -- ════════════════════════ ELEMENT FACTORY ════════════════════════
 local function BuildAPI(container, ownerTab)
     local api = {}
     local Window = ownerTab.Window
     local sections = {}
+    local allElements = {}
 
     local function Track(conn)
         table.insert(Window.Connections, conn)
         return conn
+    end
+    local function TrackElem(elem, conn)
+        if not elem._connections then elem._connections = {} end
+        table.insert(elem._connections, conn)
     end
     local function AddHook(fn)
         table.insert(ThemeHooks, { Window, fn })
@@ -442,13 +742,13 @@ local function BuildAPI(container, ownerTab)
         Holder.LayoutOrder = NextOrder()
         Holder.Parent = container
 
-        local HolderLayout = Instance.new("UIListLayout") -- FIX: cegah Header & Clip overlap di (0,0)
+        local HolderLayout = Instance.new("UIListLayout")
         HolderLayout.SortOrder = Enum.SortOrder.LayoutOrder
         HolderLayout.Parent = Holder
 
         local Header = Instance.new("TextButton")
         Header.Size = UDim2.new(1, 0, 0, 34)
-        Header.LayoutOrder = 1 -- FIX
+        Header.LayoutOrder = 1
         Themed(Header, "BackgroundColor3", "Surface2")
         Header.BackgroundTransparency = 0.35
         Header.AutoButtonColor = false
@@ -481,7 +781,7 @@ local function BuildAPI(container, ownerTab)
 
         local Clip = Instance.new("Frame")
         Clip.Size = UDim2.new(1, 0, 0, 0)
-        Clip.LayoutOrder = 2 -- FIX
+        Clip.LayoutOrder = 2
         Clip.ClipsDescendants = true
         Clip.BackgroundTransparency = 1
         Clip.BorderSizePixel = 0
@@ -583,7 +883,7 @@ local function BuildAPI(container, ownerTab)
         Hitbox.ZIndex = 4
         Hitbox.Parent = Row
 
-        local PillScale = Instance.new("UIScale") -- PREMIUM: pill mengecil dikit saat ditekan
+        local PillScale = Instance.new("UIScale")
         PillScale.Scale = 1
         PillScale.Parent = Pill
         Hitbox.InputBegan:Connect(function(input)
@@ -612,6 +912,7 @@ local function BuildAPI(container, ownerTab)
         end
 
         Hitbox.Activated:Connect(function()
+            if Toggle._state and Toggle._state.Disabled then return end
             Toggle:Set(not Value)
         end)
 
@@ -629,6 +930,8 @@ local function BuildAPI(container, ownerTab)
         Render(true)
         AddHook(function() Render(true) end)
         RegisterFlag(Toggle, c.Flag)
+        Toggle._state = SetupElementStates(Toggle, { Row })
+        if c.Tooltip then CreateHoverTooltip(ownerTab.Window.ScreenGui, Hitbox, c.Tooltip) end
         return Toggle
     end
 
@@ -643,6 +946,8 @@ local function BuildAPI(container, ownerTab)
         local step = c.Step
         local suffix = c.Suffix or ""
         local value = math.clamp(tonumber(c.Default) or min, min, max)
+        local showTooltip = c.ShowTooltip ~= false
+        local onReleaseOnly = c.CallbackOnlyOnRelease == true
 
         local Row = Instance.new("Frame")
         Row.Size = UDim2.new(1, 0, 0, c.Desc and 66 or 60)
@@ -690,6 +995,25 @@ local function BuildAPI(container, ownerTab)
         ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
         ValueLabel.Parent = Row
 
+        -- Slider Tooltip (muncul saat drag)
+        local DragTooltip = Instance.new("TextLabel")
+        DragTooltip.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+        DragTooltip.BackgroundTransparency = 0.1
+        DragTooltip.BorderSizePixel = 0
+        DragTooltip.Font = Enum.Font.GothamBold
+        DragTooltip.TextColor3 = Color3.fromRGB(255, 255, 255)
+        DragTooltip.TextSize = 11
+        DragTooltip.Text = ""
+        DragTooltip.Visible = false
+        DragTooltip.ZIndex = 10
+        DragTooltip.Size = UDim2.new(0, 50, 0, 22)
+        DragTooltip.Parent = Row
+        Round(DragTooltip, 6)
+        local tipPad = Instance.new("UIPadding")
+        tipPad.PaddingLeft = UDim.new(0, 4)
+        tipPad.PaddingRight = UDim.new(0, 4)
+        tipPad.Parent = DragTooltip
+
         local TrackBar = Instance.new("Frame")
         TrackBar.Position = UDim2.new(0, 14, 0, c.Desc and 46 or 42)
         TrackBar.Size = UDim2.new(1, -28, 0, 6)
@@ -717,6 +1041,15 @@ local function BuildAPI(container, ownerTab)
         Round(Knob, 7)
         Stroke(Knob, "Border", 0.4, 1)
 
+        -- Hit area yang lebih besar untuk mobile
+        local Hit = Instance.new("TextButton")
+        Hit.BackgroundTransparency = 1
+        Hit.Text = ""
+        Hit.Position = UDim2.new(0, -10, 0, -14)
+        Hit.Size = UDim2.new(1, 20, 0, 34)
+        Hit.ZIndex = 5
+        Hit.Parent = TrackBar
+
         local Slider = { Value = value }
         local function ToAlpha(v) return (v - min) / (max - min) end
         local function FromAlpha(a)
@@ -730,13 +1063,16 @@ local function BuildAPI(container, ownerTab)
             Fill.Size = UDim2.new(alpha, 0, 1, 0)
             Knob.Position = UDim2.new(alpha, 0, 0.5, 0)
             ValueLabel.Text = string.format("%." .. precision .. "f", value) .. suffix
+            DragTooltip.Text = string.format("%." .. precision .. "f", value) .. suffix
         end
 
         local dragging = false
-        TrackBar.InputBegan:Connect(function(input)
+        Hit.InputBegan:Connect(function(input)
+            if Slider._state and Slider._state.Disabled then return end
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 dragging = true
-                SetScrollEnabled(TrackBar, false)
+                SetScrollEnabled(Hit, false)
+                if showTooltip then DragTooltip.Visible = true end
                 local pos = ScreenPos(input)
                 local alpha = math.clamp((pos.X - TrackBar.AbsolutePosition.X) / math.max(TrackBar.AbsoluteSize.X, 1), 0, 1)
                 Slider:Set(FromAlpha(alpha))
@@ -744,8 +1080,12 @@ local function BuildAPI(container, ownerTab)
                 releaseConn = input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         dragging = false
-                        SetScrollEnabled(TrackBar, true)
+                        DragTooltip.Visible = false
+                        SetScrollEnabled(Hit, true)
                         if releaseConn then releaseConn:Disconnect() end
+                        if onReleaseOnly and c.Callback then
+                            task.spawn(c.Callback, value)
+                        end
                     end
                 end)
             end
@@ -756,6 +1096,8 @@ local function BuildAPI(container, ownerTab)
                 local pos = ScreenPos(input)
                 local alpha = math.clamp((pos.X - TrackBar.AbsolutePosition.X) / math.max(TrackBar.AbsoluteSize.X, 1), 0, 1)
                 Slider:Set(FromAlpha(alpha))
+                -- Update tooltip position
+                DragTooltip.Position = UDim2.new(alpha, -25, 0, c.Desc and 18 or 14)
             end
         end))
 
@@ -769,7 +1111,9 @@ local function BuildAPI(container, ownerTab)
             Slider.Value = value
             Render()
             if changed and not silent and c.Callback then
-                task.spawn(c.Callback, value)
+                if not onReleaseOnly then
+                    task.spawn(c.Callback, value)
+                end
             end
         end
 
@@ -778,15 +1122,18 @@ local function BuildAPI(container, ownerTab)
         Render()
         AddHook(function() Fill.BackgroundColor3 = Akbar.Theme.Accent end)
         RegisterFlag(Slider, c.Flag)
+        Slider._state = SetupElementStates(Slider, { Row })
+        if c.Tooltip then CreateHoverTooltip(ownerTab.Window.ScreenGui, Row, c.Tooltip) end
         return Slider
     end
 
-    -- ─────────── DROPDOWN (single & multi) ───────────
+    -- ─────────── DROPDOWN (single & multi + search) ───────────
     function api:Dropdown(c)
         c = c or {}
         local options = {}
         for _, o in ipairs(c.Options or {}) do table.insert(options, tostring(o)) end
         local multi = c.Multi and true or false
+        local enableSearch = c.Search ~= false and #options > 8
         local Value
         if multi then
             Value = {}
@@ -842,9 +1189,45 @@ local function BuildAPI(container, ownerTab)
         ListFrame.Parent = container
         Stroke(ListFrame, "Border", 0.6, 1)
 
+        -- Search bar (jika opsi banyak)
+        local SearchBar, SearchInput
+        local listStartY = 4
+        if enableSearch then
+            SearchBar = Instance.new("Frame")
+            SearchBar.Size = UDim2.new(1, -8, 0, 30)
+            SearchBar.Position = UDim2.new(0, 4, 0, 4)
+            SearchBar.BackgroundColor3 = Akbar.Theme.Surface2
+            SearchBar.BorderSizePixel = 0
+            SearchBar.Parent = ListFrame
+            Round(SearchBar, 6)
+
+            SearchInput = Instance.new("TextBox")
+            SearchInput.Size = UDim2.new(1, -8, 1, 0)
+            SearchInput.Position = UDim2.new(0, 4, 0, 0)
+            SearchInput.BackgroundTransparency = 1
+            SearchInput.Font = Enum.Font.Gotham
+            SearchInput.PlaceholderText = "Search..."
+            SearchInput.PlaceholderColor3 = Akbar.Theme.Muted
+            SearchInput.Text = ""
+            SearchInput.TextColor3 = Akbar.Theme.Text
+            SearchInput.TextSize = 12
+            SearchInput.TextXAlignment = Enum.TextXAlignment.Left
+            SearchInput.ClearTextOnFocus = false
+            SearchInput.Parent = SearchBar
+            listStartY = 38
+
+            SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
+                local query = string.lower(SearchInput.Text)
+                for opt, info in pairs(optionButtons) do
+                    local match = query == "" or string.find(string.lower(opt), query, 1, true)
+                    info.Button.Visible = match ~= nil
+                end
+            end)
+        end
+
         local ListScroll = Instance.new("ScrollingFrame")
-        ListScroll.Size = UDim2.new(1, -8, 1, -8)
-        ListScroll.Position = UDim2.new(0, 4, 0, 4)
+        ListScroll.Size = UDim2.new(1, -8, 1, -listStartY - 4)
+        ListScroll.Position = UDim2.new(0, 4, 0, listStartY)
         ListScroll.BackgroundTransparency = 1
         ListScroll.BorderSizePixel = 0
         ListScroll.ScrollBarThickness = 3
@@ -883,8 +1266,12 @@ local function BuildAPI(container, ownerTab)
 
         local function SetOpen(state)
             expanded = state and true or false
-            if expanded then ListFrame.Visible = true end
-            local target = expanded and math.clamp(#options * 30 + 10, 0, 164) or 0
+            if expanded then
+                ListFrame.Visible = true
+                if SearchInput then SearchInput.Text = "" end
+            end
+            local extra = enableSearch and 34 or 0
+            local target = expanded and math.clamp(#options * 30 + 10 + extra, 0, 200) or 0
             Tween(ListFrame, TI(0.25), { Size = UDim2.new(1, 0, 0, target) })
             Tween(Chevron, TI(0.25), { Rotation = expanded and 180 or 0 })
             if not expanded then
@@ -931,7 +1318,7 @@ local function BuildAPI(container, ownerTab)
                 Check.Visible = false
                 Check.Parent = Opt
 
-                optionButtons[opt] = { Label = OL, Check = Check }
+                optionButtons[opt] = { Label = OL, Check = Check, Button = Opt }
 
                 Opt.MouseEnter:Connect(function() OL.TextColor3 = Akbar.Theme.Text end)
                 Opt.MouseLeave:Connect(function() RenderOptions() end)
@@ -964,7 +1351,6 @@ local function BuildAPI(container, ownerTab)
             Tween(OpenBtn, TI(0.15), { BackgroundTransparency = 0 })
         end)
 
-        -- FIX: tutup dropdown kalau klik di luar area dropdown
         Track(UserInputService.InputBegan:Connect(function(input)
             if not expanded then return end
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -1016,9 +1402,28 @@ local function BuildAPI(container, ownerTab)
             BuildOptions()
         end
 
+        function Dropdown:AddOption(opt)
+            table.insert(options, tostring(opt))
+            BuildOptions()
+        end
+
+        function Dropdown:RemoveOption(opt)
+            local idx = table.find(options, tostring(opt))
+            if idx then table.remove(options, idx) end
+            if multi then
+                local vIdx = table.find(Value, tostring(opt))
+                if vIdx then table.remove(Value, vIdx) end
+            elseif Value == tostring(opt) then
+                Value = options[1] or ""
+            end
+            BuildOptions()
+        end
+
         BuildOptions()
         AddHook(RenderOptions)
         RegisterFlag(Dropdown, c.Flag)
+        Dropdown._state = SetupElementStates(Dropdown, { Row, ListFrame })
+        if c.Tooltip then CreateHoverTooltip(ownerTab.Window.ScreenGui, Row, c.Tooltip) end
         return Dropdown
     end
 
@@ -1037,16 +1442,16 @@ local function BuildAPI(container, ownerTab)
         Btn.LayoutOrder = NextOrder()
         Round(Btn, 8)
         Btn.Parent = container
-        PressFeedback(Btn) -- PREMIUM: efek tactile
+        PressFeedback(Btn)
 
         if c.Primary then
-            Stroke(Btn, "Accent", 0.55, 1) -- PREMIUM: glow tipis di tombol primary
+            Stroke(Btn, "Accent", 0.55, 1)
         end
 
         Btn.MouseEnter:Connect(function() Tween(Btn, TI(0.15), { BackgroundTransparency = 0.25 }) end)
         Btn.MouseLeave:Connect(function() Tween(Btn, TI(0.15), { BackgroundTransparency = 0 }) end)
 
-        local busy = false -- FIX: cegah spam-klik/double-fire pas mobile nge-tap cepat
+        local busy = false
         Btn.Activated:Connect(function()
             if busy then return end
             busy = true
@@ -1060,9 +1465,194 @@ local function BuildAPI(container, ownerTab)
 
         local obj = { Instance = Btn }
         function obj:Set(text) Btn.Text = tostring(text or "") end
+        obj._state = SetupElementStates(obj, { Btn })
+        if c.Tooltip then CreateHoverTooltip(ownerTab.Window.ScreenGui, Btn, c.Tooltip) end
         return obj
     end
 
+    -- ─────────── CHECKLIST ───────────
+    function api:Checklist(c)
+        c = c or {}
+        local options = {}
+        for _, o in ipairs(c.Options or {}) do table.insert(options, tostring(o)) end
+        local Value = {}
+        for _, d in ipairs(c.Default or {}) do table.insert(Value, tostring(d)) end
+
+        local Row = NewRow(c.Title or "Checklist", c.Desc)
+        local Checklist = { Value = Value }
+
+        local OpenBtn = Instance.new("TextButton")
+        OpenBtn.AnchorPoint = Vector2.new(1, 0.5)
+        OpenBtn.Position = UDim2.new(1, -14, 0.5, 0)
+        OpenBtn.Size = UDim2.new(0, 140, 0, 28)
+        Themed(OpenBtn, "BackgroundColor3", "Surface2")
+        OpenBtn.AutoButtonColor = false
+        OpenBtn.Text = ""
+        OpenBtn.BorderSizePixel = 0
+        Round(OpenBtn, 6)
+        OpenBtn.Parent = Row
+        Stroke(OpenBtn, "Border", 0.6, 1)
+
+        local ValLabel = Instance.new("TextLabel")
+        ValLabel.Size = UDim2.new(1, -28, 1, 0)
+        ValLabel.Position = UDim2.new(0, 10, 0, 0)
+        ValLabel.BackgroundTransparency = 1
+        ValLabel.Font = Enum.Font.GothamMedium
+        Themed(ValLabel, "TextColor3", "Text")
+        ValLabel.TextSize = 12
+        ValLabel.TextXAlignment = Enum.TextXAlignment.Left
+        ValLabel.TextTruncate = Enum.TextTruncate.AtEnd
+        ValLabel.Parent = OpenBtn
+
+        local Chevron = Instance.new("ImageLabel")
+        Chevron.AnchorPoint = Vector2.new(1, 0.5)
+        Chevron.Position = UDim2.new(1, -8, 0.5, 0)
+        Chevron.Size = UDim2.new(0, 12, 0, 12)
+        Chevron.BackgroundTransparency = 1
+        Chevron.Image = GetIcon("chevron-down")
+        Themed(Chevron, "ImageColor3", "Muted")
+        Chevron.Parent = OpenBtn
+
+        local ListFrame = Instance.new("Frame")
+        ListFrame.Size = UDim2.new(1, 0, 0, 0)
+        ListFrame.ClipsDescendants = true
+        Themed(ListFrame, "BackgroundColor3", "Surface")
+        ListFrame.BackgroundTransparency = 0.3
+        ListFrame.BorderSizePixel = 0
+        ListFrame.Visible = false
+        ListFrame.LayoutOrder = NextOrder()
+        Round(ListFrame, 8)
+        ListFrame.Parent = container
+        Stroke(ListFrame, "Border", 0.6, 1)
+
+        local ListScroll = Instance.new("ScrollingFrame")
+        ListScroll.Size = UDim2.new(1, -8, 1, -8)
+        ListScroll.Position = UDim2.new(0, 4, 0, 4)
+        ListScroll.BackgroundTransparency = 1
+        ListScroll.BorderSizePixel = 0
+        ListScroll.ScrollBarThickness = 3
+        ListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+        ListScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        ListScroll.Parent = ListFrame
+
+        local LLayout = Instance.new("UIListLayout")
+        LLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        LLayout.Padding = UDim.new(0, 2)
+        LLayout.Parent = ListScroll
+
+        local expanded = false
+        local checkboxes = {}
+
+        local function Render()
+            local count = #Value
+            ValLabel.Text = count == 0 and "None selected" or count == 1 and Value[1] or count .. " selected"
+            for opt, cb in pairs(checkboxes) do
+                local checked = table.find(Value, opt) ~= nil
+                cb.Box.BackgroundColor3 = checked and Akbar.Theme.Accent or Akbar.Theme.Surface2
+                cb.Check.Visible = checked
+                cb.Label.TextColor3 = checked and Akbar.Theme.Text or Akbar.Theme.Muted
+            end
+        end
+
+        local function SetOpen(state)
+            expanded = state and true or false
+            if expanded then ListFrame.Visible = true end
+            local target = expanded and math.clamp(#options * 28 + 10, 0, 164) or 0
+            Tween(ListFrame, TI(0.25), { Size = UDim2.new(1, 0, 0, target) })
+            Tween(Chevron, TI(0.25), { Rotation = expanded and 180 or 0 })
+            if not expanded then
+                task.delay(0.3, function()
+                    if not expanded then ListFrame.Visible = false end
+                end)
+            end
+        end
+
+        local function BuildCheckboxes()
+            for _, child in ipairs(ListScroll:GetChildren()) do
+                if child:IsA("TextButton") then child:Destroy() end
+            end
+            checkboxes = {}
+            for i, opt in ipairs(options) do
+                local Opt = Instance.new("TextButton")
+                Opt.Size = UDim2.new(1, 0, 0, 26)
+                Opt.BackgroundTransparency = 1
+                Opt.AutoButtonColor = false
+                Opt.Text = ""
+                Opt.BorderSizePixel = 0
+                Opt.LayoutOrder = i
+                Opt.Parent = ListScroll
+
+                local Box = Instance.new("Frame")
+                Box.Position = UDim2.new(0, 10, 0.5, -8)
+                Box.Size = UDim2.new(0, 16, 0, 16)
+                Box.BackgroundColor3 = Akbar.Theme.Surface2
+                Box.BorderSizePixel = 0
+                Box.Parent = Opt
+                Round(Box, 4)
+                Stroke(Box, "Border", 0.4, 1)
+
+                local Check = Instance.new("ImageLabel")
+                Check.Size = UDim2.new(1, 0, 1, 0)
+                Check.BackgroundTransparency = 1
+                Check.Image = GetIcon("check")
+                Check.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                Check.Visible = false
+                Check.Parent = Box
+
+                local Label = Instance.new("TextLabel")
+                Label.Position = UDim2.new(0, 34, 0, 0)
+                Label.Size = UDim2.new(1, -44, 1, 0)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.GothamMedium
+                Label.TextColor3 = Akbar.Theme.Muted
+                Label.TextSize = 12
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Text = opt
+                Label.Parent = Opt
+
+                checkboxes[opt] = { Box = Box, Check = Check, Label = Label }
+
+                Opt.Activated:Connect(function()
+                    local idx = table.find(Value, opt)
+                    if idx then table.remove(Value, idx) else table.insert(Value, opt) end
+                    Checklist.Value = Value
+                    Render()
+                    if c.Callback then task.spawn(c.Callback, CopyTable(Value)) end
+                end)
+            end
+            Render()
+        end
+
+        OpenBtn.Activated:Connect(function() SetOpen(not expanded) end)
+
+        Track(UserInputService.InputBegan:Connect(function(input)
+            if not expanded then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                local pos = ScreenPos(input)
+                if not InBounds(pos, ListFrame) and not InBounds(pos, OpenBtn) and not InBounds(pos, Row) then
+                    SetOpen(false)
+                end
+            end
+        end))
+
+        function Checklist:Set(v, silent)
+            Value = {}
+            if type(v) == "table" then
+                for _, x in ipairs(v) do table.insert(Value, tostring(x)) end
+            end
+            Checklist.Value = Value
+            Render()
+            if not silent and c.Callback then task.spawn(c.Callback, CopyTable(Value)) end
+        end
+
+        function Checklist:Get() return CopyTable(Value) end
+
+        BuildCheckboxes()
+        AddHook(Render)
+        RegisterFlag(Checklist, c.Flag)
+        Checklist._state = SetupElementStates(Checklist, { Row, ListFrame })
+        return Checklist
+    end
 
     -- ─────────── LABEL / PARAGRAPH / DIVIDER ───────────
     function api:Label(c)
@@ -1078,9 +1668,11 @@ local function BuildAPI(container, ownerTab)
         L.TextXAlignment = Enum.TextXAlignment.Left
         L.Text = c.Title or c.Text or ""
         L.LayoutOrder = NextOrder()
+        if c.RichText then L.RichText = true end
         L.Parent = container
         local obj = {}
         function obj:Set(t) L.Text = tostring(t or "") end
+        obj._state = SetupElementStates(obj, { L })
         return obj
     end
 
@@ -1118,6 +1710,7 @@ local function BuildAPI(container, ownerTab)
 
         local obj = {}
         function obj:Set(title, desc) T.Text = title or "" D.Text = desc or "" end
+        obj._state = SetupElementStates(obj, { Frame })
         return obj
     end
 
@@ -1135,6 +1728,211 @@ local function BuildAPI(container, ownerTab)
         Line.BorderSizePixel = 0
         Line.Parent = Hold
         return Hold
+    end
+
+    -- ─────────── IMAGE ───────────
+    function api:Image(c)
+        c = c or {}
+        local Frame = Instance.new("ImageLabel")
+        Frame.Size = UDim2.new(1, 0, 0, c.Height or 120)
+        Frame.Image = c.Image or ""
+        Frame.ScaleType = c.ScaleType or Enum.ScaleType.Fit
+        Frame.BackgroundTransparency = 1
+        Frame.LayoutOrder = NextOrder()
+        Frame.Parent = container
+        Round(Frame, 8)
+        
+        if c.CornerRadius then
+            Frame:GetChildren()[1].CornerRadius = UDim.new(0, c.CornerRadius)
+        end
+        
+        local obj = { Instance = Frame }
+        function obj:Set(image) Frame.Image = image or "" end
+        obj._state = SetupElementStates(obj, { Frame })
+        return obj
+    end
+
+    -- ─────────── CONSOLE ───────────
+    function api:Console(c)
+        c = c or {}
+        local Frame = Instance.new("Frame")
+        Frame.Size = UDim2.new(1, 0, 0, c.Height or 200)
+        Frame.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
+        Frame.BorderSizePixel = 0
+        Frame.LayoutOrder = NextOrder()
+        Round(Frame, 8)
+        Frame.Parent = container
+        Stroke(Frame, "Border", 0.3, 1)
+
+        -- Header bar
+        local Header = Instance.new("Frame")
+        Header.Size = UDim2.new(1, 0, 0, 26)
+        Header.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
+        Header.BorderSizePixel = 0
+        Header.Parent = Frame
+        Round(Header, 8)
+
+        local HeaderMask = Instance.new("Frame")
+        HeaderMask.AnchorPoint = Vector2.new(0, 1)
+        HeaderMask.Position = UDim2.new(0, 0, 1, 0)
+        HeaderMask.Size = UDim2.new(1, 0, 0, 10)
+        HeaderMask.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
+        HeaderMask.BorderSizePixel = 0
+        HeaderMask.Parent = Header
+
+        local TitleLabel = Instance.new("TextLabel")
+        TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+        TitleLabel.Size = UDim2.new(1, -20, 1, 0)
+        TitleLabel.BackgroundTransparency = 1
+        TitleLabel.Font = Enum.Font.GothamBold
+        TitleLabel.TextColor3 = Akbar.Theme.Muted
+        TitleLabel.TextSize = 11
+        TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        TitleLabel.TextYAlignment = Enum.TextYAlignment.Center
+        TitleLabel.Text = c.Title or "Console"
+        TitleLabel.Parent = Header
+
+        local ClearBtn = Instance.new("TextButton")
+        ClearBtn.AnchorPoint = Vector2.new(1, 0.5)
+        ClearBtn.Position = UDim2.new(1, -8, 0.5, 0)
+        ClearBtn.Size = UDim2.new(0, 60, 0, 18)
+        ClearBtn.BackgroundColor3 = Akbar.Theme.Surface2
+        ClearBtn.Font = Enum.Font.GothamBold
+        ClearBtn.TextColor3 = Akbar.Theme.Muted
+        ClearBtn.TextSize = 10
+        ClearBtn.Text = "Clear"
+        ClearBtn.AutoButtonColor = false
+        ClearBtn.BorderSizePixel = 0
+        ClearBtn.Parent = Header
+        Round(ClearBtn, 4)
+
+        local Scroll = Instance.new("ScrollingFrame")
+        Scroll.Size = UDim2.new(1, -8, 1, -34)
+        Scroll.Position = UDim2.new(0, 4, 0, 30)
+        Scroll.BackgroundTransparency = 1
+        Scroll.BorderSizePixel = 0
+        Scroll.ScrollBarThickness = 3
+        Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+        Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        Scroll.Parent = Frame
+
+        local Layout = Instance.new("UIListLayout")
+        Layout.SortOrder = Enum.SortOrder.LayoutOrder
+        Layout.Padding = UDim.new(0, 1)
+        Layout.Parent = Scroll
+
+        local Console = { Lines = {}, MaxLines = c.MaxLines or 100 }
+
+        local function AddLine(text, color, prefix)
+            color = color or Color3.fromRGB(200, 200, 200)
+            prefix = prefix or ""
+
+            local Label = Instance.new("TextLabel")
+            Label.Size = UDim2.new(1, -8, 0, 0)
+            Label.AutomaticSize = Enum.AutomaticSize.Y
+            Label.BackgroundTransparency = 1
+            Label.Font = Enum.Font.Code
+            Label.TextColor3 = color
+            Label.TextSize = 11
+            Label.TextWrapped = true
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Text = prefix .. text
+            Label.LayoutOrder = #Console.Lines + 1
+            Label.Parent = Scroll
+
+            table.insert(Console.Lines, { Text = text, Color = color, Time = os.time() })
+
+            -- Remove old lines if exceed max
+            if #Console.Lines > Console.MaxLines then
+                table.remove(Console.Lines, 1)
+                local first = Scroll:GetChildren()[1]
+                if first and first:IsA("TextLabel") then first:Destroy() end
+            end
+
+            -- Auto scroll to bottom
+            task.defer(function()
+                Scroll.CanvasPosition = Vector2.new(0, math.max(0, Scroll.AbsoluteCanvasSize.Y - Scroll.AbsoluteSize.Y))
+            end)
+        end
+
+        ClearBtn.Activated:Connect(function()
+            Console:Clear()
+        end)
+
+        function Console:Log(text, color) AddLine(text, color, "") end
+        function Console:Info(text) AddLine(text, Color3.fromRGB(56, 130, 255), "[INFO] ") end
+        function Console:Warn(text) AddLine(text, Color3.fromRGB(241, 196, 15), "[WARN] ") end
+        function Console:Error(text) AddLine(text, Color3.fromRGB(231, 76, 60), "[ERROR] ") end
+        function Console:Success(text) AddLine(text, Color3.fromRGB(46, 204, 113), "[OK] ") end
+        function Console:Debug(text) AddLine(text, Color3.fromRGB(140, 147, 168), "[DEBUG] ") end
+
+        function Console:Clear()
+            for _, child in ipairs(Scroll:GetChildren()) do
+                if child:IsA("TextLabel") then child:Destroy() end
+            end
+            self.Lines = {}
+        end
+
+        function Console:GetLines()
+            local result = {}
+            for i, line in ipairs(self.Lines) do
+                result[i] = line.Text
+            end
+            return result
+        end
+
+        Console._state = SetupElementStates(Console, { Frame })
+        return Console
+    end
+
+    -- ─────────── SPINNER ───────────
+    function api:Spinner(c)
+        c = c or {}
+        local Row = NewRow(c.Title or "Loading", c.Desc)
+
+        local SpinnerIcon = Instance.new("ImageLabel")
+        SpinnerIcon.AnchorPoint = Vector2.new(1, 0.5)
+        SpinnerIcon.Position = UDim2.new(1, -14, 0.5, 0)
+        SpinnerIcon.Size = UDim2.new(0, 20, 0, 20)
+        SpinnerIcon.BackgroundTransparency = 1
+        SpinnerIcon.Image = GetIcon("loader-circle")
+        SpinnerIcon.ImageColor3 = Akbar.Theme.Accent
+        SpinnerIcon.Parent = Row
+
+        local spinConn
+        local isSpinning = true
+
+        local function StartSpin()
+            if spinConn then spinConn:Disconnect() end
+            spinConn = RunService.Heartbeat:Connect(function(dt)
+                SpinnerIcon.Rotation = (SpinnerIcon.Rotation + dt * 360) % 360
+            end)
+            isSpinning = true
+        end
+
+        local function StopSpin()
+            if spinConn then
+                spinConn:Disconnect()
+                spinConn = nil
+            end
+            isSpinning = false
+            Tween(SpinnerIcon, TI(0.3), { ImageTransparency = 1 })
+        end
+
+        StartSpin()
+
+        local SpinnerObj = { _spinConn = spinConn }
+        function SpinnerObj:Stop() StopSpin() end
+        function SpinnerObj:Start()
+            SpinnerIcon.ImageTransparency = 0
+            if not isSpinning then StartSpin() end
+        end
+        function SpinnerObj:SetText(text)
+            local title = Row:FindFirstChild("Title") or Row:FindFirstChildOfClass("TextLabel")
+            if title then title.Text = text end
+        end
+        SpinnerObj._state = SetupElementStates(SpinnerObj, { Row })
+        return SpinnerObj
     end
 
     -- ─────────── KEYBIND ───────────
@@ -1168,6 +1966,7 @@ local function BuildAPI(container, ownerTab)
         ChipLabel.Font = Enum.Font.GothamBold
         Themed(ChipLabel, "TextColor3", "Muted")
         ChipLabel.TextSize = 11
+        ChipLabel.TextTruncate = Enum.TextTruncate.AtEnd
         ChipLabel.Text = current ~= Enum.KeyCode.Unknown and current.Name or "None"
         ChipLabel.Parent = Chip
 
@@ -1214,6 +2013,8 @@ local function BuildAPI(container, ownerTab)
         end
 
         RegisterFlag(Keybind, c.Flag)
+        Keybind._state = SetupElementStates(Keybind, { Row })
+        if c.Tooltip then CreateHoverTooltip(ownerTab.Window.ScreenGui, Chip, c.Tooltip) end
         return Keybind
     end
 
@@ -1257,7 +2058,6 @@ local function BuildAPI(container, ownerTab)
         SV.BorderSizePixel = 0
         SV.Parent = Panel
         local SVGrad = Instance.new("UIGradient")
-        SVGrad.Rotation = 0
         SVGrad.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromHSV(h, 1, 1))
         SVGrad.Parent = SV
 
@@ -1412,6 +2212,8 @@ local function BuildAPI(container, ownerTab)
 
         Update(true)
         RegisterFlag(Picker, c.Flag)
+        Picker._state = SetupElementStates(Picker, { Row, Panel })
+        if c.Tooltip then CreateHoverTooltip(ownerTab.Window.ScreenGui, Swatch, c.Tooltip) end
         return Picker
     end
 
@@ -1433,6 +2235,7 @@ local function BuildAPI(container, ownerTab)
         Box.Text = c.Default or ""
         Box.TextXAlignment = Enum.TextXAlignment.Left
         Box.ClearTextOnFocus = false
+        Box.TextTruncate = Enum.TextTruncate.AtEnd
         Round(Box, 6)
         Box.Parent = Row
         Stroke(Box, "Border", 0.6, 1)
@@ -1450,10 +2253,12 @@ local function BuildAPI(container, ownerTab)
         end
 
         RegisterFlag(Input, c.Flag)
+        Input._state = SetupElementStates(Input, { Row })
+        if c.Tooltip then CreateHoverTooltip(ownerTab.Window.ScreenGui, Row, c.Tooltip) end
         return Input
     end
 
-    -- ─────────── STEPPER (baru) ───────────
+    -- ─────────── STEPPER ───────────
     function api:Stepper(c)
         c = c or {}
         local min = (c.Range and c.Range[1]) or 0
@@ -1467,7 +2272,7 @@ local function BuildAPI(container, ownerTab)
 
         local MinusBtn = Instance.new("TextButton")
         MinusBtn.AnchorPoint = Vector2.new(1, 0.5)
-        MinusBtn.Position = UDim2.new(1, -104, 0.5, 0)
+        MinusBtn.Position = UDim2.new(1, -102, 0.5, 0)
         MinusBtn.Size = UDim2.new(0, 28, 0, 28)
         Themed(MinusBtn, "BackgroundColor3", "Surface2")
         MinusBtn.AutoButtonColor = false
@@ -1483,8 +2288,8 @@ local function BuildAPI(container, ownerTab)
 
         local ValueLabel = Instance.new("TextLabel")
         ValueLabel.AnchorPoint = Vector2.new(1, 0.5)
-        ValueLabel.Position = UDim2.new(1, -70, 0.5, 0)
-        ValueLabel.Size = UDim2.new(0, 56, 0, 28)
+        ValueLabel.Position = UDim2.new(1, -48, 0.5, 0)
+        ValueLabel.Size = UDim2.new(0, 48, 0, 28)
         ValueLabel.BackgroundTransparency = 1
         ValueLabel.Font = Enum.Font.GothamBold
         Themed(ValueLabel, "TextColor3", "Text")
@@ -1527,10 +2332,11 @@ local function BuildAPI(container, ownerTab)
         PlusBtn.Activated:Connect(function() Stepper:Set(value + step) end)
 
         RegisterFlag(Stepper, c.Flag)
+        Stepper._state = SetupElementStates(Stepper, { Row })
         return Stepper
     end
 
-    -- ─────────── PROGRESS BAR (baru) ───────────
+    -- ─────────── PROGRESS BAR ───────────
     function api:Progress(c)
         c = c or {}
         local value = math.clamp(tonumber(c.CurrentValue) or 0, 0, 1)
@@ -1580,7 +2386,7 @@ local function BuildAPI(container, ownerTab)
         Fill.BorderSizePixel = 0
         Fill.Parent = TrackBar
         Round(Fill, 4)
-        local FillGrad = Instance.new("UIGradient") -- PREMIUM: gradient tipis di isi progress bar
+        local FillGrad = Instance.new("UIGradient")
         FillGrad.Color = ColorSequence.new(Akbar.Theme.Accent, Akbar.Theme.AccentDark)
         FillGrad.Parent = Fill
 
@@ -1607,10 +2413,11 @@ local function BuildAPI(container, ownerTab)
             Fill.BackgroundColor3 = Akbar.Theme.Accent
             FillGrad.Color = ColorSequence.new(Akbar.Theme.Accent, Akbar.Theme.AccentDark)
         end)
+        Progress._state = SetupElementStates(Progress, { Row })
         return Progress
     end
 
-    -- ─────────── TOOLTIP / INFO HINT (baru) ───────────
+    -- ─────────── TOOLTIP / INFO HINT ───────────
     function api:Tooltip(c)
         c = c or {}
         local Row = Instance.new("Frame")
@@ -1699,7 +2506,33 @@ local function BuildAPI(container, ownerTab)
         local Tooltip = {}
         function Tooltip:Expand() SetExpanded(true) end
         function Tooltip:Collapse() SetExpanded(false) end
+        Tooltip._state = SetupElementStates(Tooltip, { Row })
         return Tooltip
+    end
+
+    -- ─────────── THEME PICKER ───────────
+    function api:ThemePicker(c)
+        c = c or {}
+        local preset = api:Dropdown({
+            Title = c.Title or "Theme Preset",
+            Desc = "Pilih warna aksen",
+            Options = Akbar:ListPresets(),
+            Default = "Default Blue",
+            Callback = function(name)
+                if Akbar:SetPreset(name) then
+                    if c.Callback then c.Callback(name) end
+                end
+            end
+        })
+        local custom = api:ColorPicker({
+            Title = "Custom Accent",
+            Desc = "Override manual",
+            Default = Akbar.Theme.Accent,
+            Callback = function(color)
+                Akbar:SetAccentColor(color)
+            end
+        })
+        return { Preset = preset, Custom = custom }
     end
 
     return api
@@ -1717,6 +2550,7 @@ function Akbar:CreateWindow(config)
     local MaxSize = config.MaxSize or Vector2.new(1100, 750)
     local MaxNotifs = config.MaxNotifications or 5
     local KeepOnScreen = config.KeepOnScreen ~= false
+    local EnableBlur = config.Blur ~= false
     local ShadowPad = 12
 
     local Window = {
@@ -1743,12 +2577,34 @@ function Akbar:CreateWindow(config)
 
     -- Root ScreenGui
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "AkbarUI_" .. tostring(WindowName):gsub("%s+", "")
+    ScreenGui.Name = "AkbarUI_" .. tostring(WindowName):gsub("%s+", "") .. "_" .. tostring(#Akbar.Windows)
     ScreenGui.ResetOnSpawn = false
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     ScreenGui.DisplayOrder = config.DisplayOrder or 100
     SafeParentGui(ScreenGui, config.Parent)
     Window.ScreenGui = ScreenGui
+
+    -- Background Blur
+    local BlurEffect = nil
+    if EnableBlur then
+        local ok = pcall(function()
+            BlurEffect = Instance.new("BlurEffect")
+            BlurEffect.Size = 0
+            BlurEffect.Parent = Lighting
+        end)
+        if not ok then BlurEffect = nil end
+    end
+    Window.BlurEffect = BlurEffect
+
+    local function SetBlur(state)
+        if not BlurEffect then return end
+        if state then
+            Tween(BlurEffect, TI(0.3), { Size = 12 })
+        else
+            Tween(BlurEffect, TI(0.3), { Size = 0 })
+        end
+    end
+    Window.SetBlur = SetBlur
 
     -- Shadow + Main Window
     local MainShadow = Instance.new("ImageLabel")
@@ -2045,7 +2901,7 @@ function Akbar:CreateWindow(config)
     ResizeGrip.ZIndex = 20
     ResizeGrip.Parent = MainWindow
 
-    -- ───── Viewport clamping (FIX: koordinat konsisten + aman respawn) ─────
+    -- ───── Viewport clamping ─────
     local function ClampCenter(center)
         local gs = ScreenGui.AbsoluteSize
         if gs.X <= 0 or gs.Y <= 0 then return center end
@@ -2068,18 +2924,26 @@ function Akbar:CreateWindow(config)
         MainShadow.Position = UDim2.new(0, c.X, 0, c.Y)
     end
 
-    Track(ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(ClampToViewport))
+    Track(ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+        if Window.IsMaximized and not Window.IsMinimized then
+            local gs = ScreenGui.AbsoluteSize
+            MainShadow.Size = UDim2.fromOffset(
+                math.max(gs.X - 40, Window.MinSize.X),
+                math.max(gs.Y - 60, Window.MinSize.Y))
+            MainShadow.Position = UDim2.new(0, gs.X / 2, 0, gs.Y / 2)
+        end
+        ClampToViewport()
+    end))
 
     -- ───── Drag state ─────
     local isDragging, dragStart, startCenter = false, nil, nil
     local isResizing, resizeStart, startSize = false, nil, nil
     local isFloatDragging, floatStart, floatPos, hasMoved = false, nil, nil, false
-    local SetWindowVisible -- forward declaration
+    local SetWindowVisible
 
     Header.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if Window.IsMaximized then return end -- FIX: drag mati saat maximize
-            -- FIX: jangan mulai drag kalau pointer di area tombol kontrol
+            if Window.IsMaximized then return end
             local ap, as = Controls.AbsolutePosition, Controls.AbsoluteSize
             local p = ScreenPos(input)
             if p.X >= ap.X - 4 and p.X <= ap.X + as.X + 4 and p.Y >= ap.Y - 4 and p.Y <= ap.Y + as.Y + 4 then
@@ -2100,7 +2964,7 @@ function Akbar:CreateWindow(config)
 
     ResizeGrip.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if Window.IsMinimized or Window.IsMaximized then return end -- FIX
+            if Window.IsMinimized or Window.IsMaximized then return end
             isResizing = true
             resizeStart = input.Position
             startSize = MainShadow.AbsoluteSize
@@ -2143,7 +3007,6 @@ function Akbar:CreateWindow(config)
                     if input.UserInputState == Enum.UserInputState.End then
                         isFloatDragging = false
                         if releaseConn then releaseConn:Disconnect() end
-                        -- FIX: clamp biar tidak bisa di-drag keluar layar
                         local gs = ScreenGui.AbsoluteSize
                         local p = FloatBtn.Position
                         local x = math.clamp(p.X.Scale * gs.X + p.X.Offset, 8, math.max(8, gs.X - 50))
@@ -2164,7 +3027,7 @@ function Akbar:CreateWindow(config)
     end
     Window.OpenButton = OpenButton
 
-    -- ───── FIX: satu koneksi InputChanged untuk semua (drag/resize/float) ─────
+    -- ───── Single InputChanged connection ─────
     Track(UserInputService.InputChanged:Connect(function(input)
         local isMove = input.UserInputType == Enum.UserInputType.MouseMovement
             or input.UserInputType == Enum.UserInputType.Touch
@@ -2195,7 +3058,7 @@ function Akbar:CreateWindow(config)
         end
     end))
 
-    -- ───── Show / hide dengan animasi (FIX: tidak blokir thread UI) ─────
+    -- ───── Show / hide ─────
     SetWindowVisible = function(visible)
         if visible then
             if Window.IsMinimized then
@@ -2205,6 +3068,7 @@ function Akbar:CreateWindow(config)
                 ResizeGrip.Visible = not Window.IsMaximized
             end
             MainShadow.Visible = true
+            SetBlur(true)
             if not Window.IsMaximized then
                 local wsx, wsy = Window.Size.X.Offset, Window.Size.Y.Offset
                 local baseX = (MainShadow.AbsoluteSize.X > 0 and MainShadow.AbsoluteSize.X) or (wsx > 0 and wsx) or 760
@@ -2215,6 +3079,7 @@ function Akbar:CreateWindow(config)
             end
             ClampToViewport()
         else
+            SetBlur(false)
             if Window.IsMinimized then
                 MainShadow.Visible = false
                 return
@@ -2290,7 +3155,7 @@ function Akbar:CreateWindow(config)
         end
     end)
 
-    -- ───── Keybind toggle (FIX: support string & EnumItem) ─────
+    -- ───── Keybind toggle ─────
     local function MatchesToggleKey(keyCode)
         if typeof(ToggleKey) == "EnumItem" then return keyCode == ToggleKey end
         return keyCode.Name == ToggleKey
@@ -2303,7 +3168,7 @@ function Akbar:CreateWindow(config)
         end
     end))
 
-    -- ───── Search filter (FIX: auto pindah tab) ─────
+    -- ───── Search filter ─────
     SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
         if not Window.SearchEnabled then return end
         local query = string.lower(SearchInput.Text)
@@ -2318,7 +3183,7 @@ function Akbar:CreateWindow(config)
         end
     end)
 
-    -- ───── Loading screen (FIX: TextButton biar input tidak tembus) ─────
+    -- ───── Loading screen ─────
     if config.Loading and config.Loading.Enabled then
         local lData = config.Loading
         local LoadFrame = Instance.new("TextButton")
@@ -2388,6 +3253,9 @@ function Akbar:CreateWindow(config)
 
     -- ════════════════ WINDOW METHODS ════════════════
     function Window:Toggle() SetWindowVisible(not MainShadow.Visible) end
+    function Window:Show() SetWindowVisible(true) end
+    function Window:Hide() SetWindowVisible(false) end
+    function Window:IsVisible() return MainShadow.Visible end
     function Window:Center()
         MainShadow.Position = UDim2.new(0.5, 0, 0.5, 0)
         ClampToViewport()
@@ -2423,7 +3291,56 @@ function Akbar:CreateWindow(config)
     function Window:DeleteConfig(name) Window.Config:Delete(name) end
     function Window:ListConfigs() return Window.Config:List() end
 
-    -- ───── Notifications (FIX: animasi tidak bentrok dgn UIListLayout) ─────
+    -- ───── Auto Config Tab ─────
+    function Window:AddConfigTab()
+        local tab = Window:CreateTab({ Name = "Settings", Icon = "settings", Desc = "Save & load configuration" })
+        local sec = tab:Section({ Title = "Config System" })
+
+        local hasFS = (writefile and readfile and isfile) ~= nil
+        sec:Label({ Text = hasFS
+            and ("Configs saved in folder: " .. Window.Config.Folder)
+            or "Your executor has no file system — configs only last this session." })
+
+        local current = "default"
+        local nameInput = sec:Input({
+            Title = "Config Name", Placeholder = "default", Default = "default",
+            Callback = function(t) current = (t ~= "" and t) or "default" end
+        })
+
+        local list
+        list = sec:Dropdown({
+            Title = "Saved Configs",
+            Options = Window:ListConfigs(),
+            Callback = function(v) current = v nameInput:Set(v) end
+        })
+
+        sec:Button({ Title = "Save Config", Primary = true, Callback = function()
+            Window:SaveConfig(current)
+            list:Refresh(Window:ListConfigs(), false)
+            Window:Notify({ Title = "Config", Content = "Saved: " .. current, Type = "success" })
+        end })
+
+        sec:Button({ Title = "Load Config", Callback = function()
+            if Window:LoadConfig(current) then
+                Window:Notify({ Title = "Config", Content = "Loaded: " .. current, Type = "success" })
+            else
+                Window:Notify({ Title = "Config", Content = "'" .. current .. "' not found", Type = "error" })
+            end
+        end })
+
+        sec:Button({ Title = "Delete Config", Callback = function()
+            Window:DeleteConfig(current)
+            list:Refresh(Window:ListConfigs(), false)
+        end })
+
+        -- Theme section
+        local themeSec = tab:Section({ Title = "Appearance" })
+        themeSec:ThemePicker({ Title = "Theme" })
+
+        return tab
+    end
+
+    -- ───── Notifications ─────
     function Window:Notify(notifData)
         notifData = notifData or {}
         local title = notifData.Title or "Akbar UI"
@@ -2525,12 +3442,12 @@ function Akbar:CreateWindow(config)
         Tween(Inner, TI(0.3), { Position = UDim2.new(0, 0, 0, 0) })
         Tween(ProgressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 0, 2) })
 
-        Inner.Activated:Connect(function() Close(false) end) -- klik untuk dismiss
+        Inner.Activated:Connect(function() Close(false) end)
         task.delay(duration, function() Close(false) end)
         return notifRef
     end
 
-    -- ───── Confirm dialog (FIX: backdrop cancel, anti double-callback) ─────
+    -- ───── Confirm dialog ─────
     function Window:Confirm(confirmData)
         confirmData = confirmData or {}
         local title = confirmData.Title or "Confirmation"
@@ -2561,7 +3478,6 @@ function Akbar:CreateWindow(config)
         Round(DialogBox, 10)
         Stroke(DialogBox, "Border", 0.2, 1)
 
-        -- FIX: cegah klik di dalam dialog "tembus" ke backdrop
         local Blocker = Instance.new("TextButton")
         Blocker.Size = UDim2.new(1, 0, 1, 0)
         Blocker.BackgroundTransparency = 1
@@ -2629,12 +3545,12 @@ function Akbar:CreateWindow(config)
         local ConfirmB = CreateDButton(cText, true, function() Answer(true) end)
         ConfirmB.Position = UDim2.new(0.5, 6, 0, 0)
 
-        ModalBackdrop.Activated:Connect(function() Answer(false) end) -- FIX: klik luar = cancel
+        ModalBackdrop.Activated:Connect(function() Answer(false) end)
         Tween(ModalBackdrop, TI(0.2), { BackgroundTransparency = 0.5 })
         Tween(DialogBox, TI(0.25), { Position = UDim2.new(0.5, 0, 0.5, 0) })
     end
 
-    -- ───── Dialog (FIX: tombol proporsional) ─────
+    -- ───── Dialog ─────
     function Window:Dialog(dialogData)
         dialogData = dialogData or {}
         local title = dialogData.Title or "Akbar"
@@ -2725,6 +3641,10 @@ function Akbar:CreateWindow(config)
             end)
         end
 
+        if dialogData.CloseOnBackdrop ~= false then
+            ModalBackdrop.Activated:Connect(function() ModalBackdrop:Destroy() end)
+        end
+
         Tween(DialogBox, TI(0.25), { Position = UDim2.new(0.5, 0, 0.5, 0) })
     end
 
@@ -2783,7 +3703,7 @@ function Akbar:CreateWindow(config)
         TabBtn.LayoutOrder = #Window.Tabs + 1
         TabBtn.Parent = TabScroll
         Round(TabBtn, 8)
-        Tab.NavButton = TabBtn -- FIX: dipisah dari nama "Button" biar tidak tabrakan dengan method :Button() (pembuat komponen tombol)
+        Tab.NavButton = TabBtn
 
         local TabIconImg = Instance.new("ImageLabel")
         TabIconImg.Position = UDim2.new(0, 10, 0.5, -9)
@@ -2806,6 +3726,42 @@ function Akbar:CreateWindow(config)
         TabText.Parent = TabBtn
         Tab.TextLabel = TabText
 
+        -- Badge support
+        Tab.BadgeCount = 0
+        local Badge = Instance.new("Frame")
+        Badge.AnchorPoint = Vector2.new(1, 0.5)
+        Badge.Position = UDim2.new(1, -8, 0.5, 0)
+        Badge.Size = UDim2.new(0, 16, 0, 16)
+        Badge.BackgroundColor3 = Akbar.Theme.Error
+        Badge.BorderSizePixel = 0
+        Badge.Visible = false
+        Badge.ZIndex = 3
+        Badge.Parent = TabBtn
+        Round(Badge, 8)
+
+        local BadgeText = Instance.new("TextLabel")
+        BadgeText.Size = UDim2.new(1, 0, 1, 0)
+        BadgeText.BackgroundTransparency = 1
+        BadgeText.Font = Enum.Font.GothamBold
+        BadgeText.TextColor3 = Color3.fromRGB(255, 255, 255)
+        BadgeText.TextSize = 10
+        BadgeText.Text = ""
+        BadgeText.Parent = Badge
+        Tab.Badge = Badge
+        Tab.BadgeText = BadgeText
+
+        function Tab:SetBadge(count)
+            Tab.BadgeCount = count
+            if count > 0 then
+                Badge.Visible = true
+                BadgeText.Text = count > 99 and "99+" or tostring(count)
+                local size = math.clamp(16 + #tostring(count) * 4, 16, 32)
+                Badge.Size = UDim2.new(0, size, 0, 16)
+            else
+                Badge.Visible = false
+            end
+        end
+
         TabBtn.MouseEnter:Connect(function()
             if Window.ActiveTab ~= Tab then
                 Tween(TabBtn, TI(0.15), { BackgroundTransparency = 0.45 })
@@ -2818,6 +3774,7 @@ function Akbar:CreateWindow(config)
         end)
         TabBtn.Activated:Connect(function()
             Window:SelectTab(Tab)
+            if Tab.BadgeCount > 0 then Tab:SetBadge(0) end
         end)
 
         local PageScroll = Instance.new("ScrollingFrame")
@@ -2852,7 +3809,7 @@ function Akbar:CreateWindow(config)
         return Tab
     end
 
-    -- Hook tema: warna tab aktif ikut berubah saat ganti accent
+    -- Hook tema
     AddHook(function()
         for _, t in ipairs(Window.Tabs) do
             if Window.ActiveTab == t then
@@ -2875,18 +3832,38 @@ function Akbar:CreateWindow(config)
         for i = #ThemeHooks, 1, -1 do
             if ThemeHooks[i][1] == Window then table.remove(ThemeHooks, i) end
         end
+        if BlurEffect then pcall(function() BlurEffect:Destroy() end) end
         if Window.ScreenGui then Window.ScreenGui:Destroy() end
+        for i, w in ipairs(Akbar.Windows) do
+            if w == Window then table.remove(Akbar.Windows, i) break end
+        end
     end
 
-    -- Inisialisasi: normalisasi ukuran (FIX: support Size dgn Scale) + clamp
+    -- Register to global window list
+    table.insert(Akbar.Windows, Window)
+
+    -- Mobile auto-fit
     if not Window.SearchEnabled then
         Window:SetSearchEnabled(false)
     end
     task.defer(function()
         RunService.RenderStepped:Wait()
-        local abs = MainShadow.AbsoluteSize
-        if abs.X > 0 and abs.Y > 0 then
-            Window.Size = UDim2.fromOffset(abs.X, abs.Y)
+        local isPhone = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+        if isPhone then
+            local gs = ScreenGui.AbsoluteSize
+            if gs.X > 0 and gs.Y > 0 then
+                MainShadow.Size = UDim2.fromOffset(
+                    math.clamp(gs.X - 24, Window.MinSize.X, Window.MaxSize.X),
+                    math.clamp(gs.Y - 90, Window.MinSize.Y, Window.MaxSize.Y))
+                Window.Size = MainShadow.Size
+            end
+            ResizeGrip.Size = UDim2.new(0, 28, 0, 28)
+            ResizeGrip.Position = UDim2.new(1, -4, 1, -4)
+        else
+            local abs = MainShadow.AbsoluteSize
+            if abs.X > 0 and abs.Y > 0 then
+                Window.Size = UDim2.fromOffset(abs.X, abs.Y)
+            end
         end
         ClampToViewport()
     end)
