@@ -38,6 +38,18 @@ Akbar.Theme = {
     GlassTransparency = 0.12,
 }
 
+-- ════════════════════════ PRESET THEMES ════════════════════════
+-- Palet siap pakai biar user tinggal panggil Akbar:SetPreset("Nama")
+Akbar.Presets = {
+    ["Default Blue"] = { Accent = Color3.fromRGB(56, 130, 255), AccentDark = Color3.fromRGB(40, 95, 200) },
+    ["Royal Purple"] = { Accent = Color3.fromRGB(147, 112, 255), AccentDark = Color3.fromRGB(110, 80, 210) },
+    ["Crimson Red"] = { Accent = Color3.fromRGB(255, 82, 82), AccentDark = Color3.fromRGB(205, 55, 55) },
+    ["Emerald Green"] = { Accent = Color3.fromRGB(46, 213, 145), AccentDark = Color3.fromRGB(30, 170, 115) },
+    ["Sunset Orange"] = { Accent = Color3.fromRGB(255, 150, 60), AccentDark = Color3.fromRGB(215, 115, 35) },
+    ["Ocean Teal"] = { Accent = Color3.fromRGB(45, 200, 220), AccentDark = Color3.fromRGB(30, 160, 180) },
+    ["Midnight Pink"] = { Accent = Color3.fromRGB(255, 105, 180), AccentDark = Color3.fromRGB(210, 75, 145) },
+}
+
 local Icons = {
     ["crown"] = "rbxassetid://7733964719", ["anchor"] = "rbxassetid://7733658504",
     ["fish"] = "rbxassetid://7733919783", ["pickaxe"] = "rbxassetid://7734053495",
@@ -127,6 +139,27 @@ local function Stroke(inst, key, transparency, thickness)
     Themed(s, "Color", key or "Border")
     s.Parent = inst
     return s
+end
+
+-- FIX/PREMIUM: efek tactile ringan (mengecil dikit saat ditekan) biar respon klik lebih "berasa",
+-- terutama di HP dimana nggak ada hover state. Dipasang ke UIScale, bukan Size langsung,
+-- biar tidak ganggu AutomaticSize/Layout milik elemen aslinya.
+local function PressFeedback(button, minScale)
+    minScale = minScale or 0.96
+    local scale = Instance.new("UIScale")
+    scale.Scale = 1
+    scale.Parent = button
+    button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            Tween(scale, TI(0.08, Enum.EasingStyle.Quad), { Scale = minScale })
+        end
+    end)
+    button.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            Tween(scale, TI(0.15, Enum.EasingStyle.Back), { Scale = 1 })
+        end
+    end)
+    return scale
 end
 
 local function SafeParentGui(gui, preferredParent)
@@ -300,6 +333,22 @@ function Akbar:SetAccentColor(color)
         math.clamp(math.floor(color.G * 255) - 20, 0, 255),
         math.clamp(math.floor(color.B * 255) - 20, 0, 255))
     RefreshThemed()
+end
+
+function Akbar:SetPreset(name)
+    local preset = Akbar.Presets[name]
+    if not preset then return false end
+    Akbar.Theme.Accent = preset.Accent
+    Akbar.Theme.AccentDark = preset.AccentDark
+    RefreshThemed()
+    return true
+end
+
+function Akbar:ListPresets()
+    local names = {}
+    for name in pairs(Akbar.Presets) do table.insert(names, name) end
+    table.sort(names)
+    return names
 end
 
 function Akbar:SetAnimations(state)
@@ -533,6 +582,20 @@ local function BuildAPI(container, ownerTab)
         Hitbox.Text = ""
         Hitbox.ZIndex = 4
         Hitbox.Parent = Row
+
+        local PillScale = Instance.new("UIScale") -- PREMIUM: pill mengecil dikit saat ditekan
+        PillScale.Scale = 1
+        PillScale.Parent = Pill
+        Hitbox.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                Tween(PillScale, TI(0.08, Enum.EasingStyle.Quad), { Scale = 0.9 })
+            end
+        end)
+        Hitbox.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                Tween(PillScale, TI(0.15, Enum.EasingStyle.Back), { Scale = 1 })
+            end
+        end)
 
         local function Render(instant)
             local targetColor = Value and Akbar.Theme.Accent or Akbar.Theme.Surface2
@@ -974,17 +1037,32 @@ local function BuildAPI(container, ownerTab)
         Btn.LayoutOrder = NextOrder()
         Round(Btn, 8)
         Btn.Parent = container
+        PressFeedback(Btn) -- PREMIUM: efek tactile
+
+        if c.Primary then
+            Stroke(Btn, "Accent", 0.55, 1) -- PREMIUM: glow tipis di tombol primary
+        end
 
         Btn.MouseEnter:Connect(function() Tween(Btn, TI(0.15), { BackgroundTransparency = 0.25 }) end)
         Btn.MouseLeave:Connect(function() Tween(Btn, TI(0.15), { BackgroundTransparency = 0 }) end)
+
+        local busy = false -- FIX: cegah spam-klik/double-fire pas mobile nge-tap cepat
         Btn.Activated:Connect(function()
-            if c.Callback then task.spawn(c.Callback) end
+            if busy then return end
+            busy = true
+            if c.Callback then
+                local ok, err = pcall(c.Callback)
+                if not ok then warn("[AkbarUI] Button callback error:", err) end
+            end
+            task.wait(0.15)
+            busy = false
         end)
 
         local obj = { Instance = Btn }
         function obj:Set(text) Btn.Text = tostring(text or "") end
         return obj
     end
+
 
     -- ─────────── LABEL / PARAGRAPH / DIVIDER ───────────
     function api:Label(c)
@@ -1373,6 +1451,255 @@ local function BuildAPI(container, ownerTab)
 
         RegisterFlag(Input, c.Flag)
         return Input
+    end
+
+    -- ─────────── STEPPER (baru) ───────────
+    function api:Stepper(c)
+        c = c or {}
+        local min = (c.Range and c.Range[1]) or 0
+        local max = (c.Range and c.Range[2]) or 100
+        if max <= min then max = min + 1 end
+        local step = c.Increment or 1
+        local value = math.clamp(tonumber(c.CurrentValue) or min, min, max)
+
+        local Row = NewRow(c.Title, c.Desc)
+        local Stepper = { Value = value }
+
+        local MinusBtn = Instance.new("TextButton")
+        MinusBtn.AnchorPoint = Vector2.new(1, 0.5)
+        MinusBtn.Position = UDim2.new(1, -104, 0.5, 0)
+        MinusBtn.Size = UDim2.new(0, 28, 0, 28)
+        Themed(MinusBtn, "BackgroundColor3", "Surface2")
+        MinusBtn.AutoButtonColor = false
+        MinusBtn.Font = Enum.Font.GothamBold
+        Themed(MinusBtn, "TextColor3", "Text")
+        MinusBtn.TextSize = 16
+        MinusBtn.Text = "-"
+        MinusBtn.BorderSizePixel = 0
+        Round(MinusBtn, 6)
+        MinusBtn.Parent = Row
+        Stroke(MinusBtn, "Border", 0.6, 1)
+        PressFeedback(MinusBtn, 0.9)
+
+        local ValueLabel = Instance.new("TextLabel")
+        ValueLabel.AnchorPoint = Vector2.new(1, 0.5)
+        ValueLabel.Position = UDim2.new(1, -70, 0.5, 0)
+        ValueLabel.Size = UDim2.new(0, 56, 0, 28)
+        ValueLabel.BackgroundTransparency = 1
+        ValueLabel.Font = Enum.Font.GothamBold
+        Themed(ValueLabel, "TextColor3", "Text")
+        ValueLabel.TextSize = 13
+        ValueLabel.Text = tostring(value)
+        ValueLabel.Parent = Row
+
+        local PlusBtn = Instance.new("TextButton")
+        PlusBtn.AnchorPoint = Vector2.new(1, 0.5)
+        PlusBtn.Position = UDim2.new(1, -14, 0.5, 0)
+        PlusBtn.Size = UDim2.new(0, 28, 0, 28)
+        Themed(PlusBtn, "BackgroundColor3", "Surface2")
+        PlusBtn.AutoButtonColor = false
+        PlusBtn.Font = Enum.Font.GothamBold
+        Themed(PlusBtn, "TextColor3", "Text")
+        PlusBtn.TextSize = 16
+        PlusBtn.Text = "+"
+        PlusBtn.BorderSizePixel = 0
+        Round(PlusBtn, 6)
+        PlusBtn.Parent = Row
+        Stroke(PlusBtn, "Border", 0.6, 1)
+        PressFeedback(PlusBtn, 0.9)
+
+        function Stepper:Set(v, silent)
+            v = tonumber(v)
+            if v == nil then return end
+            v = math.clamp(v, min, max)
+            local changed = v ~= value
+            value = v
+            Stepper.Value = value
+            ValueLabel.Text = tostring(value)
+            if changed and not silent and c.Callback then
+                task.spawn(c.Callback, value)
+            end
+        end
+
+        function Stepper:Get() return value end
+
+        MinusBtn.Activated:Connect(function() Stepper:Set(value - step) end)
+        PlusBtn.Activated:Connect(function() Stepper:Set(value + step) end)
+
+        RegisterFlag(Stepper, c.Flag)
+        return Stepper
+    end
+
+    -- ─────────── PROGRESS BAR (baru) ───────────
+    function api:Progress(c)
+        c = c or {}
+        local value = math.clamp(tonumber(c.CurrentValue) or 0, 0, 1)
+        local Row = Instance.new("Frame")
+        Row.Size = UDim2.new(1, 0, 0, 46)
+        Themed(Row, "BackgroundColor3", "Surface")
+        Row.BackgroundTransparency = 0.55
+        Row.BorderSizePixel = 0
+        Row.LayoutOrder = NextOrder()
+        Round(Row, 8)
+        Row.Parent = container
+
+        local Title = Instance.new("TextLabel")
+        Title.Position = UDim2.new(0, 14, 0, 8)
+        Title.Size = UDim2.new(1, -110, 0, 14)
+        Title.BackgroundTransparency = 1
+        Title.Font = Enum.Font.GothamMedium
+        Themed(Title, "TextColor3", "Text")
+        Title.TextSize = 12
+        Title.TextXAlignment = Enum.TextXAlignment.Left
+        Title.TextTruncate = Enum.TextTruncate.AtEnd
+        Title.Text = c.Title or "Progress"
+        Title.Parent = Row
+
+        local ValueLabel = Instance.new("TextLabel")
+        ValueLabel.AnchorPoint = Vector2.new(1, 0)
+        ValueLabel.Position = UDim2.new(1, -14, 0, 8)
+        ValueLabel.Size = UDim2.new(0, 90, 0, 14)
+        ValueLabel.BackgroundTransparency = 1
+        ValueLabel.Font = Enum.Font.GothamBold
+        Themed(ValueLabel, "TextColor3", "Muted")
+        ValueLabel.TextSize = 11
+        ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+        ValueLabel.Parent = Row
+
+        local TrackBar = Instance.new("Frame")
+        TrackBar.Position = UDim2.new(0, 14, 0, 28)
+        TrackBar.Size = UDim2.new(1, -28, 0, 8)
+        Themed(TrackBar, "BackgroundColor3", "Surface2")
+        TrackBar.BorderSizePixel = 0
+        TrackBar.Parent = Row
+        Round(TrackBar, 4)
+
+        local Fill = Instance.new("Frame")
+        Fill.Size = UDim2.new(0, 0, 1, 0)
+        Fill.BackgroundColor3 = Akbar.Theme.Accent
+        Fill.BorderSizePixel = 0
+        Fill.Parent = TrackBar
+        Round(Fill, 4)
+        local FillGrad = Instance.new("UIGradient") -- PREMIUM: gradient tipis di isi progress bar
+        FillGrad.Color = ColorSequence.new(Akbar.Theme.Accent, Akbar.Theme.AccentDark)
+        FillGrad.Parent = Fill
+
+        local Progress = { Value = value }
+        local function Render(instant)
+            local text = c.Format and c.Format(value) or (math.floor(value * 100) .. "%")
+            ValueLabel.Text = text
+            if instant then
+                Fill.Size = UDim2.new(value, 0, 1, 0)
+            else
+                Tween(Fill, TI(0.3), { Size = UDim2.new(value, 0, 1, 0) })
+            end
+        end
+
+        function Progress:Set(v)
+            v = math.clamp(tonumber(v) or 0, 0, 1)
+            value = v
+            Progress.Value = value
+            Render(false)
+        end
+
+        Render(true)
+        AddHook(function()
+            Fill.BackgroundColor3 = Akbar.Theme.Accent
+            FillGrad.Color = ColorSequence.new(Akbar.Theme.Accent, Akbar.Theme.AccentDark)
+        end)
+        return Progress
+    end
+
+    -- ─────────── TOOLTIP / INFO HINT (baru) ───────────
+    function api:Tooltip(c)
+        c = c or {}
+        local Row = Instance.new("Frame")
+        Row.Size = UDim2.new(1, 0, 0, 0)
+        Row.AutomaticSize = Enum.AutomaticSize.Y
+        Row.BackgroundTransparency = 1
+        Row.LayoutOrder = NextOrder()
+        Row.Parent = container
+
+        local Head = Instance.new("TextButton")
+        Head.Size = UDim2.new(1, 0, 0, 30)
+        Themed(Head, "BackgroundColor3", "Surface")
+        Head.BackgroundTransparency = 0.6
+        Head.AutoButtonColor = false
+        Head.Text = ""
+        Head.BorderSizePixel = 0
+        Round(Head, 6)
+        Head.Parent = Row
+        PressFeedback(Head, 0.98)
+
+        local Icon = Instance.new("ImageLabel")
+        Icon.Position = UDim2.new(0, 10, 0.5, -8)
+        Icon.Size = UDim2.new(0, 16, 0, 16)
+        Icon.BackgroundTransparency = 1
+        Icon.Image = GetIcon("info")
+        Themed(Icon, "ImageColor3", "Accent")
+        Icon.Parent = Head
+
+        local HTitle = Instance.new("TextLabel")
+        HTitle.Position = UDim2.new(0, 34, 0, 0)
+        HTitle.Size = UDim2.new(1, -50, 1, 0)
+        HTitle.BackgroundTransparency = 1
+        HTitle.Font = Enum.Font.GothamMedium
+        Themed(HTitle, "TextColor3", "Muted")
+        HTitle.TextSize = 12
+        HTitle.TextXAlignment = Enum.TextXAlignment.Left
+        HTitle.Text = c.Title or "Info"
+        HTitle.Parent = Head
+
+        local Chevron = Instance.new("ImageLabel")
+        Chevron.AnchorPoint = Vector2.new(1, 0.5)
+        Chevron.Position = UDim2.new(1, -10, 0.5, 0)
+        Chevron.Size = UDim2.new(0, 12, 0, 12)
+        Chevron.BackgroundTransparency = 1
+        Chevron.Image = GetIcon("chevron-down")
+        Themed(Chevron, "ImageColor3", "Muted")
+        Chevron.Parent = Head
+
+        local Clip = Instance.new("Frame")
+        Clip.Position = UDim2.new(0, 0, 0, 30)
+        Clip.Size = UDim2.new(1, 0, 0, 0)
+        Clip.ClipsDescendants = true
+        Clip.BackgroundTransparency = 1
+        Clip.Parent = Row
+
+        local Text = Instance.new("TextLabel")
+        Text.Position = UDim2.new(0, 34, 0, 4)
+        Text.Size = UDim2.new(1, -44, 0, 0)
+        Text.AutomaticSize = Enum.AutomaticSize.Y
+        Text.BackgroundTransparency = 1
+        Text.Font = Enum.Font.Gotham
+        Themed(Text, "TextColor3", "Muted")
+        Text.TextSize = 12
+        Text.TextWrapped = true
+        Text.TextXAlignment = Enum.TextXAlignment.Left
+        Text.Text = c.Text or ""
+        Text.Parent = Clip
+
+        local expanded = false
+        local textHeight = 0
+        Text:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            textHeight = Text.AbsoluteSize.Y
+            if expanded then Clip.Size = UDim2.new(1, 0, 0, textHeight + 10) end
+        end)
+
+        local function SetExpanded(state)
+            expanded = state and true or false
+            Tween(Chevron, TI(0.2), { Rotation = expanded and 180 or 0 })
+            Tween(Clip, TI(0.2), {
+                Size = expanded and UDim2.new(1, 0, 0, textHeight + 10) or UDim2.new(1, 0, 0, 0)
+            })
+        end
+
+        Head.Activated:Connect(function() SetExpanded(not expanded) end)
+
+        local Tooltip = {}
+        function Tooltip:Expand() SetExpanded(true) end
+        function Tooltip:Collapse() SetExpanded(false) end
+        return Tooltip
     end
 
     return api
