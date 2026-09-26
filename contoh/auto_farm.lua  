@@ -1,0 +1,125 @@
+--[[
+    AKBAR UI — AUTO FARM EXAMPLE
+    Contoh realistic: UI Auto Farm lengkap dengan Section, Config, dan Keybind.
+    File: contoh/auto_farm.lua
+]]
+
+local Akbar = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/refs/heads/main/AkbarUI.lua"
+))()
+
+Akbar:SetPreset("Emerald Green") -- Tema hijau biar cocok sama farming
+
+local Window = Akbar:CreateWindow({
+    Name = "King Akbar Auto Farm",
+    LoadingSubtitle = "Farming Suite v2",
+    Icon = "sprout",
+    ToggleUIKeybind = "RightControl",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "KingAkbarFarm",
+        FileName = "settings",
+    },
+    Loading = {
+        Enabled = true,
+        Title = "King Akbar Farm",
+        Steps = {"Mencari lahan...", "Menyiapkan alat...", "Siap farming!"},
+        Duration = 1.5,
+    },
+})
+
+-- ═══════════ TAB 1: FARMING ═══════════
+local FarmTab = Window:CreateTab({ Name = "Farming", Icon = "sprout" })
+
+-- Section: Kontrol Utama
+local MainSec = FarmTab:Section({ Title = "🌾 Kontrol Utama", Open = true })
+
+local farmToggle = MainSec:Toggle({
+    Title = "Auto Farm",
+    Desc = "Aktifkan bot farming otomatis",
+    Default = false,
+    Flag = "AutoFarm",
+    Callback = function(state)
+        Window:Notify({
+            Title = state and "Farm Aktif ✅" or "Farm Mati ❌",
+            Type = state and "success" or "warning",
+        })
+        -- Taruh logic auto farm kamu di sini
+    end,
+})
+
+MainSec:Dropdown({
+    Title = "Target Tanaman",
+    Options = {"Wheat", "Corn", "Carrot", "Pumpkin"},
+    Default = "Wheat",
+    Flag = "TargetCrop",
+})
+
+MainSec:Slider({
+    Title = "Radius Farm",
+    Min = 10, Max = 500, Default = 100,
+    Suffix = " studs",
+    Flag = "FarmRadius",
+})
+
+-- Section: Pengaturan Lanjutan
+local AdvSec = FarmTab:Section({ Title = "⚙️ Lanjutan", Open = false })
+
+AdvSec:Keybind({
+    Title = "Toggle Farm Key",
+    Default = "E",
+    Flag = "FarmKey",
+    Callback = function()
+        farmToggle:Set(not farmToggle:Get())
+    end,
+})
+
+AdvSec:Stepper({
+    Title = "Delay (ms)",
+    Range = {100, 2000},
+    Increment = 100,
+    CurrentValue = 500,
+    Flag = "FarmDelay",
+})
+
+AdvSec:Toggle({
+    Title = "Auto Sell",
+    Desc = "Otomatis jual hasil farm",
+    Default = true,
+    Flag = "AutoSell",
+})
+
+-- ═══════════ TAB 2: TOOLS ═══════════
+local ToolsTab = Window:CreateTab({ Name = "Tools", Icon = "wrench" })
+
+ToolsTab:Button({
+    Title = "💾 Simpan Config",
+    Primary = true,
+    Callback = function()
+        Window:SaveConfig()
+        Window:Notify({ Title = "Config Tersimpan!", Type = "success" })
+    end,
+})
+
+ToolsTab:Button({
+    Title = "🗑️ Reset Config",
+    Callback = function()
+        Window:Confirm({
+            Title = "Reset Config?",
+            Content = "Semua pengaturan akan dihapus.",
+            Callback = function(ok)
+                if ok then
+                    Window:DeleteConfig()
+                    Window:Notify({ Title = "Config Direset", Type = "warning" })
+                end
+            end,
+        })
+    end,
+})
+
+-- Auto-load config saat script start
+task.defer(function()
+    Window:LoadConfig()
+end)
+
+print("✅ Auto Farm UI Loaded! Tekan Right Ctrl untuk toggle.")
