@@ -3734,6 +3734,226 @@ function Akbar:CreateWindow(config)
         Tween(DialogBox, TI(0.25), { Position = UDim2.new(0.5, 0, 0.5, 0) })
     end
 
+    -- ───── Popup ─────
+    -- Kotak modal modern di tengah layar: icon badge, title, content, daftar tombol.
+    -- Window:Popup({
+    --     Title = "Selamat Datang",
+    --     Icon = "crown",
+    --     Content = "Terima kasih sudah pakai Akbar UI!",
+    --     Buttons = {
+    --         { Title = "Oke", Variant = "Primary", Callback = function() end },
+    --         { Title = "Nanti Saja", Variant = "Tertiary", Callback = function() end },
+    --     },
+    -- })
+    function Window:Popup(popupData)
+        popupData = popupData or {}
+        local title = popupData.Title or "Akbar"
+        local content = popupData.Content or ""
+        local icon = popupData.Icon
+        local buttons = popupData.Buttons or { { Title = "OK", Variant = "Primary" } }
+
+        local ModalBackdrop = Instance.new("TextButton")
+        ModalBackdrop.Name = "PopupBackdrop"
+        ModalBackdrop.Size = UDim2.new(1, 0, 1, 0)
+        ModalBackdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        ModalBackdrop.BackgroundTransparency = 1
+        ModalBackdrop.AutoButtonColor = false
+        ModalBackdrop.Text = ""
+        ModalBackdrop.ZIndex = 90
+        ModalBackdrop.BorderSizePixel = 0
+        ModalBackdrop.Parent = MainWindow
+        Round(ModalBackdrop, 12)
+
+        local PopupBox = Instance.new("Frame")
+        PopupBox.Name = "PopupBox"
+        PopupBox.AnchorPoint = Vector2.new(0.5, 0.5)
+        PopupBox.Position = UDim2.new(0.5, 0, 0.5, 16)
+        PopupBox.Size = UDim2.new(0, 380, 0, 0)
+        PopupBox.AutomaticSize = Enum.AutomaticSize.Y
+        Themed(PopupBox, "BackgroundColor3", "Surface")
+        PopupBox.BorderSizePixel = 0
+        PopupBox.ZIndex = 90
+        PopupBox.Parent = ModalBackdrop
+        Round(PopupBox, 16)
+        Stroke(PopupBox, "Border", 0.2, 1)
+
+        local Blocker = Instance.new("TextButton")
+        Blocker.Size = UDim2.new(1, 0, 1, 0)
+        Blocker.BackgroundTransparency = 1
+        Blocker.AutoButtonColor = false
+        Blocker.Text = ""
+        Blocker.ZIndex = 90
+        Blocker.Parent = PopupBox
+
+        local Layout = Instance.new("UIListLayout")
+        Layout.FillDirection = Enum.FillDirection.Vertical
+        Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        Layout.SortOrder = Enum.SortOrder.LayoutOrder
+        Layout.Padding = UDim.new(0, 14)
+        Layout.Parent = PopupBox
+
+        local Padding = Instance.new("UIPadding")
+        Padding.PaddingTop = UDim.new(0, 28)
+        Padding.PaddingBottom = UDim.new(0, 24)
+        Padding.PaddingLeft = UDim.new(0, 26)
+        Padding.PaddingRight = UDim.new(0, 26)
+        Padding.Parent = PopupBox
+
+        if icon then
+            local IconBadge = Instance.new("Frame")
+            IconBadge.Name = "IconBadge"
+            IconBadge.LayoutOrder = 1
+            IconBadge.Size = UDim2.new(0, 56, 0, 56)
+            Themed(IconBadge, "BackgroundColor3", "Accent")
+            IconBadge.BackgroundTransparency = 0.85
+            IconBadge.BorderSizePixel = 0
+            IconBadge.Parent = PopupBox
+            Round(IconBadge, 28)
+
+            local IconImg = Instance.new("ImageLabel")
+            IconImg.AnchorPoint = Vector2.new(0.5, 0.5)
+            IconImg.Position = UDim2.new(0.5, 0, 0.5, 0)
+            IconImg.Size = UDim2.new(0, 26, 0, 26)
+            IconImg.BackgroundTransparency = 1
+            IconImg.Image = GetIcon(icon)
+            Themed(IconImg, "ImageColor3", "Accent")
+            IconImg.Parent = IconBadge
+            IconLib:Watch(IconImg, IconImg.Image)
+        end
+
+        local PTitle = Instance.new("TextLabel")
+        PTitle.Name = "Title"
+        PTitle.LayoutOrder = 2
+        PTitle.Size = UDim2.new(1, 0, 0, 0)
+        PTitle.AutomaticSize = Enum.AutomaticSize.Y
+        PTitle.BackgroundTransparency = 1
+        PTitle.Font = Enum.Font.GothamBold
+        Themed(PTitle, "TextColor3", "Text")
+        PTitle.TextSize = 18
+        PTitle.TextWrapped = true
+        PTitle.TextXAlignment = Enum.TextXAlignment.Center
+        PTitle.Text = title
+        PTitle.Parent = PopupBox
+
+        if content ~= "" then
+            local PContent = Instance.new("TextLabel")
+            PContent.Name = "Content"
+            PContent.LayoutOrder = 3
+            PContent.Size = UDim2.new(1, 0, 0, 0)
+            PContent.AutomaticSize = Enum.AutomaticSize.Y
+            PContent.BackgroundTransparency = 1
+            PContent.Font = Enum.Font.Gotham
+            Themed(PContent, "TextColor3", "Muted")
+            PContent.TextSize = 13
+            PContent.TextWrapped = true
+            PContent.TextXAlignment = Enum.TextXAlignment.Center
+            PContent.Text = content
+            PContent.Parent = PopupBox
+        end
+
+        local ButtonList = Instance.new("Frame")
+        ButtonList.Name = "Buttons"
+        ButtonList.LayoutOrder = 4
+        ButtonList.Size = UDim2.new(1, 0, 0, 0)
+        ButtonList.AutomaticSize = Enum.AutomaticSize.Y
+        ButtonList.BackgroundTransparency = 1
+        ButtonList.Parent = PopupBox
+
+        local BtnLayout = Instance.new("UIListLayout")
+        BtnLayout.FillDirection = Enum.FillDirection.Vertical
+        BtnLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        BtnLayout.Padding = UDim.new(0, 8)
+        BtnLayout.Parent = ButtonList
+
+        local function ClosePopup()
+            Tween(ModalBackdrop, TI(0.15), { BackgroundTransparency = 1 })
+            Tween(PopupBox, TI(0.15), { Position = UDim2.new(0.5, 0, 0.5, 12) })
+            task.delay(0.16, function()
+                if ModalBackdrop then ModalBackdrop:Destroy() end
+            end)
+        end
+
+        for i, btnInfo in ipairs(buttons) do
+            local variant = btnInfo.Variant or "Secondary"
+            local b = Instance.new("TextButton")
+            b.Name = "PopupButton"
+            b.LayoutOrder = i
+            b.Size = UDim2.new(1, 0, 0, 40)
+            b.AutoButtonColor = false
+            b.BorderSizePixel = 0
+            b.Text = ""
+            b.Parent = ButtonList
+            Round(b, 10)
+
+            if variant == "Primary" then
+                Themed(b, "BackgroundColor3", "Accent")
+            elseif variant == "Tertiary" then
+                b.BackgroundTransparency = 1
+            else
+                Themed(b, "BackgroundColor3", "Surface2")
+            end
+            PressFeedback(b)
+
+            local BRow = Instance.new("Frame")
+            BRow.Size = UDim2.new(1, 0, 1, 0)
+            BRow.BackgroundTransparency = 1
+            BRow.Parent = b
+
+            local BRowLayout = Instance.new("UIListLayout")
+            BRowLayout.FillDirection = Enum.FillDirection.Horizontal
+            BRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+            BRowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+            BRowLayout.Padding = UDim.new(0, 8)
+            BRowLayout.Parent = BRow
+
+            if btnInfo.Icon then
+                local BIcon = Instance.new("ImageLabel")
+                BIcon.LayoutOrder = 1
+                BIcon.Size = UDim2.new(0, 16, 0, 16)
+                BIcon.BackgroundTransparency = 1
+                BIcon.Image = GetIcon(btnInfo.Icon)
+                if variant == "Primary" then
+                    BIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                elseif variant == "Tertiary" then
+                    Themed(BIcon, "ImageColor3", "Muted")
+                else
+                    Themed(BIcon, "ImageColor3", "Text")
+                end
+                BIcon.Parent = BRow
+                IconLib:Watch(BIcon, BIcon.Image)
+            end
+
+            local BLabel = Instance.new("TextLabel")
+            BLabel.LayoutOrder = 2
+            BLabel.AutomaticSize = Enum.AutomaticSize.X
+            BLabel.Size = UDim2.new(0, 0, 1, 0)
+            BLabel.BackgroundTransparency = 1
+            BLabel.Font = Enum.Font.GothamBold
+            BLabel.TextSize = 13
+            BLabel.Text = btnInfo.Title or btnInfo.Name or "Button"
+            if variant == "Primary" then
+                BLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            elseif variant == "Tertiary" then
+                Themed(BLabel, "TextColor3", "Muted")
+            else
+                Themed(BLabel, "TextColor3", "Text")
+            end
+            BLabel.Parent = BRow
+
+            b.Activated:Connect(function()
+                ClosePopup()
+                if btnInfo.Callback then task.spawn(btnInfo.Callback) end
+            end)
+        end
+
+        if popupData.CloseOnBackdrop ~= false then
+            ModalBackdrop.Activated:Connect(ClosePopup)
+        end
+
+        Tween(ModalBackdrop, TI(0.2), { BackgroundTransparency = 0.5 })
+        Tween(PopupBox, TI(0.25), { Position = UDim2.new(0.5, 0, 0.5, 0) })
+    end
+
     -- ───── Tab system ─────
     function Window:SelectTab(tab)
         if type(tab) == "string" then
