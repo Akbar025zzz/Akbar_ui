@@ -7,6 +7,51 @@
             Element States (Disabled/Visible/Destroy), Background Blur,
             Slider Enhancements (OnRelease, Tooltip), Mobile UX
     Mobile: drag/resize/component support touch + auto-fit
+
+    ────────────────────────────────────────────────────────────
+    DAFTAR ISI (cari teks "════ NAMA SECTION ════" untuk lompat)
+    ────────────────────────────────────────────────────────────
+    1.  SERVICES              - Roblox service references
+    2.  ICON LIBRARY           - IconLib:Get/ListIcons/RegisterSpritesheet, 100+ ikon siap pakai
+    3.  THEME                  - Akbar.Theme (warna default) & Akbar.Presets (10 preset warna)
+    4.  LIVE THEME SYSTEM      - Themed(), RefreshThemed() — auto-update semua elemen saat ganti tema
+    5.  UTILITIES              - Tween, Round, Stroke, PressFeedback, dll (helper internal)
+    6.  CONFIG MANAGER         - ConfigManager: Save/Load/Delete/List config ke file (.json)
+    7.  PUBLIC THEME API       - Akbar:SetTheme / SetAccentColor / SetPreset / ListPresets /
+                                  SetAnimations / RefreshTheme / DestroyAll
+    8.  HOVER TOOLTIP          - Tooltip internal saat hover elemen
+    9.  ELEMENT STATES HELPER  - Disabled/Visible/Destroy state untuk tiap komponen
+    10. ELEMENT FACTORY        - BuildAPI(): pabrik semua komponen tab, isinya:
+            api:Section(c)      - Grup collapsible (accordion)
+            api:Toggle(c)       - Saklar on/off
+            api:Slider(c)       - Slider angka (dengan OnRelease + tooltip)
+            api:Dropdown(c)     - Dropdown single/multi-select + search
+            api:Button(c)       - Tombol (anti-spam-klik, pcall-protected)
+            api:Checklist(c)    - Daftar checkbox
+            api:Label(c)        - Teks label
+            api:Paragraph(c)    - Teks panjang/deskripsi
+            api:Divider()       - Garis pemisah
+            api:Image(c)        - Tampilkan gambar/ikon
+            api:Console(c)      - Log console (Console:Print/Warn)
+            api:Spinner(c)      - Loading spinner
+            api:Keybind(c)      - Input keybind
+            api:ColorPicker(c)  - Pilih warna (RGB/Hex)
+            api:Input(c)        - Text input box
+            api:Stepper(c)      - Stepper angka (+/-)
+            api:Progress(c)     - Progress bar
+            api:Tooltip(c)      - Tooltip statis
+            api:ThemePicker(c)  - Selector ganti preset tema
+    11. WINDOW                 - Akbar:CreateWindow(config), berisi Window methods:
+            Window:Toggle/Show/Hide/IsVisible/Center/SetSize/GetSize
+            Window:SetMinSize/SetMaxSize/SetTitle/SetSubtitle/SetIcon
+            Window:SetToggleKey/SetAccordion/SetSearchEnabled
+            Window:SaveConfig/LoadConfig/DeleteConfig/ListConfigs/AddConfigTab
+            Window:Notify/Confirm/Dialog
+            Window:SelectTab/CreateTab/Destroy
+    ────────────────────────────────────────────────────────────
+    VERSI  : 3.0.0
+    REPO   : https://github.com/Akbar025zzz/Akbar_ui
+    LOAD   : loadstring(game:HttpGet("https://raw.githubusercontent.com/Akbar025zzz/Akbar_ui/main/AkbarUI.lua"))()
 ]]
 
 local Akbar = {}
