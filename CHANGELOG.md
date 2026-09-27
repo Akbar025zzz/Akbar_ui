@@ -3,6 +3,14 @@
 Semua perubahan penting pada Akbar UI Framework dicatat di sini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/), versi pakai [Semantic Versioning](https://semver.org/).
 
+## [3.0.1]
+### Added
+- `IconLib:Watch(imageInstance, iconId)` — validasi async pakai `ContentProvider:PreloadAsync`. Kalau sebuah ikon ternyata sudah dihapus/dimoderasi Roblox, otomatis diganti ke ikon fallback saat runtime alih-alih tampil kotak blank permanen. Dipasang di brand icon window & ikon tab sidebar.
+
+### Fixed
+- **Window tidak bisa di-drag**: `Header` dibuat sebagai `Frame`, yang defaultnya punya `Active = false`. Di Roblox, `Frame` (beda dengan `TextButton`/`ImageButton`) butuh `Active = true` secara eksplisit supaya event `InputBegan` kepicu oleh klik/sentuhan. Ditambahkan `Header.Active = true`.
+- **ColorPicker (area Saturation/Value & Hue bar) tidak bisa di-drag**: bug yang sama persis — `SV` dan `HueBar` juga `Frame` tanpa `Active = true`. Ditambahkan `Active = true` di keduanya.
+
 ## [3.0.0]
 ### Added
 - Komponen baru: `Stepper`, `Progress`, `Tooltip`, `ThemePicker` — total jadi 19 komponen
