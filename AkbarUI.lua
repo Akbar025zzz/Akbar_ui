@@ -250,6 +250,40 @@ function IconLib:AddIcon(name, assetId)
     IconLib.Icons[name:lower()] = assetId
 end
 
+-- ─── Self-healing: cek status asset di background, auto-ganti ke fallback ───
+-- kalau asset-nya kehapus/dimoderasi Roblox (AssetFetchStatus bukan Success).
+-- Dipakai buat elemen ikon yang paling sering kelihatan (brand icon, tab icon)
+-- supaya user nggak pernah lihat kotak blank permanen.
+local ContentProvider = game:GetService("ContentProvider")
+IconLib.ValidatedCache = {} -- [iconId] = true/false, biar nggak cek ulang tiap kali
+
+function IconLib:Watch(imageInstance, iconId, fallbackId)
+    fallbackId = fallbackId or IconLib.Icons.fallback
+    if type(iconId) ~= "string" or not iconId:find("rbxassetid://", 1, true) then
+        return -- bukan rbxassetid (spritesheet/http/dll), skip validasi
+    end
+    if IconLib.ValidatedCache[iconId] == false then
+        if imageInstance and imageInstance.Parent then imageInstance.Image = fallbackId end
+        return
+    end
+    if IconLib.ValidatedCache[iconId] == true then return end
+
+    task.spawn(function()
+        local ok, statuses = pcall(function()
+            local result
+            ContentProvider:PreloadAsync({ iconId }, function(_, status)
+                result = status
+            end)
+            return result
+        end)
+        local success = ok and statuses == Enum.AssetFetchStatus.Success
+        IconLib.ValidatedCache[iconId] = success
+        if not success and imageInstance and imageInstance.Parent then
+            imageInstance.Image = fallbackId
+        end
+    end)
+end
+
 local function GetIcon(name, size, color)
     if type(name) ~= "string" or name == "" then
         return IconLib.Icons.fallback
@@ -2101,6 +2135,7 @@ local function BuildAPI(container, ownerTab)
         SV.Size = UDim2.new(0, 130, 0, 110)
         SV.BackgroundColor3 = Color3.new(1, 1, 1)
         SV.BorderSizePixel = 0
+        SV.Active = true -- WAJIB true: Frame butuh Active=true biar drag SV kepicu
         SV.Parent = Panel
         local SVGrad = Instance.new("UIGradient")
         SVGrad.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromHSV(h, 1, 1))
@@ -2135,6 +2170,7 @@ local function BuildAPI(container, ownerTab)
         HueBar.Size = UDim2.new(0, 14, 0, 110)
         HueBar.BackgroundColor3 = Color3.new(1, 1, 1)
         HueBar.BorderSizePixel = 0
+        HueBar.Active = true -- WAJIB true: Frame butuh Active=true biar drag Hue kepicu
         HueBar.Parent = Panel
         local HueGrad = Instance.new("UIGradient")
         HueGrad.Rotation = 90
@@ -2703,6 +2739,7 @@ function Akbar:CreateWindow(config)
     Header.BackgroundTransparency = Akbar.Theme.GlassTransparency
     Header.BorderSizePixel = 0
     Header.Parent = MainWindow
+    Header.Active = true -- WAJIB true: Frame butuh Active=true biar InputBegan (drag) kepicu
     Round(Header, 12)
 
     local HeaderMask = Instance.new("Frame")
@@ -2728,6 +2765,7 @@ function Akbar:CreateWindow(config)
     BrandIcon.Size = UDim2.new(0, 24, 0, 24)
     BrandIcon.BackgroundTransparency = 1
     BrandIcon.Image = GetIcon(WindowIcon)
+    IconLib:Watch(BrandIcon, BrandIcon.Image)
     Themed(BrandIcon, "ImageColor3", "Accent")
     BrandIcon.Parent = Header
 
@@ -3315,7 +3353,10 @@ function Akbar:CreateWindow(config)
     function Window:SetMaxSize(max) Window.MaxSize = max end
     function Window:SetTitle(text) TitleLabel.Text = text or WindowName end
     function Window:SetSubtitle(text) SubtitleLabel.Text = text or WindowSubtitle end
-    function Window:SetIcon(iconAsset) BrandIcon.Image = GetIcon(iconAsset) end
+    function Window:SetIcon(iconAsset)
+        BrandIcon.Image = GetIcon(iconAsset)
+        IconLib:Watch(BrandIcon, BrandIcon.Image)
+    end
     function Window:SetToggleKey(key) ToggleKey = key end
     function Window:SetAccordion(state) Window.Accordion = state and true or false end
 
@@ -3755,6 +3796,7 @@ function Akbar:CreateWindow(config)
         TabIconImg.Size = UDim2.new(0, 18, 0, 18)
         TabIconImg.BackgroundTransparency = 1
         TabIconImg.Image = GetIcon(tabIcon)
+        IconLib:Watch(TabIconImg, TabIconImg.Image)
         Themed(TabIconImg, "ImageColor3", "Muted")
         TabIconImg.Parent = TabBtn
         Tab.IconImage = TabIconImg
